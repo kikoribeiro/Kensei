@@ -21,8 +21,8 @@ window.addEventListener("keyup", (e) => {
 export function gameLoop() {
   // Use a fallback to get the canvas context if import failed
   const gameCanvas = canvas || document.getElementById("gameCanvas");
-  const gameCtx = ctx || (gameCanvas ? gameCanvas.getContext('2d') : null);
-  
+  const gameCtx = ctx || (gameCanvas ? gameCanvas.getContext("2d") : null);
+
   // Only clear and draw if we have a context
   if (gameCtx) {
     if (clearCanvas) {
@@ -48,17 +48,17 @@ export function gameLoop() {
 export function startGame() {
   // Só inicializa uma vez
   if (gameInitialized) return;
-  
+
   // Initialize canvas if not already done
-  if (typeof initCanvas === 'function') {
+  if (typeof initCanvas === "function") {
     initCanvas();
   }
 
   try {
     // Criar objetos do jogo apenas depois de inicializar o canvas
     player = new Player(100, 100, 64, 64);
-    background = new Background(108, 86, 623, 308);
-    
+    background = new Background();
+
     gameInitialized = true;
     gameLoop();
   } catch (error) {

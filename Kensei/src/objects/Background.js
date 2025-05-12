@@ -8,13 +8,8 @@ class Background {
     sourceHeight = null
   ) {
     this.image = new Image();
-    this.image.src = "./assets/backgrounds/Empty_Dojo.png"; // Caminho relativo à raiz do projeto
-
-    // Coordenadas e dimensões da parte da spritesheet a ser usada
-    this.sourceX = sourceX; // Posição X inicial na spritesheet
-    this.sourceY = sourceY; // Posição Y inicial na spritesheet
-    this.sourceWidth = sourceWidth; // Largura da parte a ser usada
-    this.sourceHeight = sourceHeight; // Altura da parte a ser usada
+    this.image.src = "./assets/backgrounds/Empty_Dojo.png";
+    this.imageLoaded = false;
 
     // Usar posição 0,0 para ocupar toda a tela
     this.x = 0;
@@ -31,8 +26,7 @@ class Background {
     }
 
     this.image.onload = () => {
-      if (this.sourceWidth === null) this.sourceWidth = this.image.width;
-      if (this.sourceHeight === null) this.sourceHeight = this.image.height;
+      this.imageLoaded = true;
     };
   }
 
@@ -40,11 +34,11 @@ class Background {
     try {
       ctx.drawImage(
         this.image,
-        this.sourceX,
-        this.sourceY,
-        this.sourceWidth,
-        this.sourceHeight,
-        this.x,
+        0,
+        0, 
+        this.image.width, 
+        this.image.height,
+        this.x, 
         this.y,
         this.width,
         this.height
