@@ -6,6 +6,8 @@ import { canvas, ctx, clearCanvas, initCanvas } from "./Canvas.js";
 
 // Objeto para rastrear teclas pressionadas
 const keys = {};
+const barWidth = 500;
+const barHeight = 30;
 let player;
 let background;
 let healthBar1, healthBar2;
@@ -63,9 +65,9 @@ export function startGame() {
     background = new Background();
 
     // Cria o HUD
-    healthBar1 = new HealthBar(50, 20, 200, 20, 100, "red");
-    healthBar2 = new HealthBar(canvas.width - 250, 20, 200, 20, 100, "green");
-    timer = new FightTimer(90);
+    healthBar1 = new HealthBar(50, 20, barWidth, barHeight, 100, "p1"); // Player 1
+    healthBar2 = new HealthBar(canvas.width - barWidth - 50, 20, barWidth, barHeight, 100, "p2"); // Player 2
+    timer = new FightTimer(99);
 
     gameInitialized = true;
     gameLoop();
