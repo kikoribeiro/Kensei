@@ -2,25 +2,16 @@ import Player from "../objects/player.js";
 import Background from "../objects/Background.js";
 import HealthBar from "../objects/HealthBar.js";
 import FightTimer from "../objects/FightTimer.js";
+import { keys, justPressed, resetKeyPress } from "./InputHandler.js";
 import { canvas, ctx, clearCanvas, initCanvas } from "./Canvas.js";
 
 // Objeto para rastrear teclas pressionadas
-const keys = {};
 let player;
 let background;
 let healthBar1, healthBar2;
 let timer;
 let gameInitialized = false;
 let roundOver = false;
-
-// Configurar eventos de teclado
-window.addEventListener("keydown", (e) => {
-  keys[e.key] = true;
-});
-
-window.addEventListener("keyup", (e) => {
-  keys[e.key] = false;
-});
 
 // Loop principal do jogo
 export function gameLoop() {
@@ -29,6 +20,11 @@ export function gameLoop() {
   clearCanvas?.() || ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (gameInitialized && background && player) {
+    // First update positions and states
+    player.update(keys, justPressed); // Add justPressed as second parameter
+    background.update(); // In case background needs updates
+
+    // Then draw everything
     background.draw(ctx);
     player.draw(ctx);
 
@@ -38,17 +34,23 @@ export function gameLoop() {
     timer.draw();
 
     if (!roundOver) {
-      if (timer.remaining <= 0 || healthBar1.currentHealth <= 0 || healthBar2.currentHealth <= 0) {
+      if (
+        timer.remaining <= 0 ||
+        healthBar1.currentHealth <= 0 ||
+        healthBar2.currentHealth <= 0
+      ) {
         endRound();
       }
     }
   }
 
   // teste temporario (premir D para causar dano no player 2)
-if (keys["d"]) {
-  healthBar2.decrease(1);
-}
-/// Continuar o loop do jogo
+  if (keys["d"]) {
+    healthBar2.decrease(1);
+  }
+
+  resetKeyPress();
+  /// Continuar o loop do jogo
   requestAnimationFrame(gameLoop);
 }
 
@@ -65,7 +67,7 @@ export function startGame() {
     // Cria o HUD
     healthBar1 = new HealthBar(50, 20, 200, 20, 100, "red");
     healthBar2 = new HealthBar(canvas.width - 250, 20, 200, 20, 100, "green");
-    timer = new FightTimer(90);
+    timer = new FightTimer(99);
 
     gameInitialized = true;
     gameLoop();
