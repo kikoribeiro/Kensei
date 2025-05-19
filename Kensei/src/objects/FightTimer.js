@@ -1,7 +1,7 @@
 import { ctx, canvas } from "../engine/Canvas.js";
 
 class FightTimer {
-  constructor(duration = 90) {
+  constructor(duration = 99) {
     this.duration = duration;
     this.remaining = duration;
     this.lastTick = Date.now();
@@ -16,10 +16,20 @@ class FightTimer {
   }
 
   draw() {
-    ctx.fillStyle = "white";
-    ctx.font = "24px Arial";
-    ctx.fillText(`Time: ${this.remaining}`, canvas.width / 2 - 40, 50);
-  }
+  const timerText = ` ${this.remaining} `;
+  ctx.font = "48px 'Orbitron', sans-serif";
+  ctx.fillStyle = "#f1c40f";
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 2;
+
+  const textWidth = ctx.measureText(timerText).width;
+  const x = canvas.width / 2 - textWidth / 2;
+  const y = 50;
+
+  // Efeito Shadow
+  ctx.strokeText(timerText, x, y);
+  ctx.fillText(timerText, x, y);
+}
 
   reset() {
     this.remaining = this.duration;

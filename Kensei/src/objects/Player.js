@@ -30,11 +30,31 @@ class Player {
     // Crouch state
     this.isCrouching = false;
 
-    // Load sprite
+    // Flag to track if animations are ready
+    this.animationsReady = false;
+
+    // Attack state
+    this.isAttacking = false;
+    this.attackType = null;
+    this.attackFrameCount = 0;
+    this.completedOneCycle = false; // Track if one cycle of the attack animation is complete
+
+    // Animation durations (in frames)
+    this.animationDurations = {
+      punch: 12, // Adjust these numbers based on actual animation length
+      kick: 15,
+    };
+
+    // Load sprite data
     this.spriteManager
       .loadSpriteData("./assets/spritesheets/spritesheet.json")
       .then(() => {
         this.initAnimations();
+        this.animationsReady = true;
+        console.log("Player animations fully initialized");
+      })
+      .catch((err) => {
+        console.error("Failed to load animations:", err);
       });
   }
 
@@ -45,10 +65,21 @@ class Player {
       walk_forward: this.spriteManager.getAnimationFrames("walk_forward-"),
       walk_backwards: this.spriteManager.getAnimationFrames("walk_backwards-"),
       jump: this.spriteManager.getAnimationFrames("jump-"),
+      crouch: this.spriteManager.getAnimationFrames("crouch-"),
       punch: this.spriteManager.getAnimationFrames("light_attack-"),
       kick: this.spriteManager.getAnimationFrames("kick-"),
     };
-    console.log("Player animations loaded:", Object.keys(this.animations));
+
+    // Check if animations are empty
+    const emptyAnimations = Object.entries(this.animations)
+      .filter(([name, frames]) => !frames || frames.length === 0)
+      .map(([name]) => name);
+
+    if (emptyAnimations.length > 0) {
+      console.warn("Empty animations:", emptyAnimations);
+    } else {
+      console.log("All animations loaded successfully");
+    }
   }
 
   draw(ctx) {
@@ -57,11 +88,33 @@ class Player {
       return;
     }
 
-    // Get current animation frames
+    // First check if animations are initialized
+    const animationsInitialized =
+      this.animations &&
+      Object.keys(this.animations).length > 0 &&
+      this.spriteManager.isLoaded;
+
+    // During loading phase, draw a placeholder
+    if (!animationsInitialized) {
+      // Draw placeholder rectangle until animations load
+      ctx.fillStyle = this.color || "red";
+      ctx.fillRect(this.x, this.y, this.width, this.height);
+      return;
+    }
+
+    // Get current animation frames (with safety check)
     const frames = this.animations[this.currentAnimation];
     if (!frames || frames.length === 0) {
+      // Only log this error if we're not in initialization phase
       console.error(`No frames found for animation: ${this.currentAnimation}`);
+      ctx.fillStyle = this.color;
+      ctx.fillRect(this.x, this.y, this.width, this.height);
       return;
+    }
+
+    // SAFE FRAME INDEX - Make sure we never go out of bounds
+    if (this.frameIndex >= frames.length) {
+      this.frameIndex = 0;
     }
 
     // Get current frame name
@@ -101,21 +154,72 @@ class Player {
     }
   }
 
-  update(keys) {
+  update(keys, justPressed = {}) {
+    // Debug key presses
+    if (Object.keys(keys).some((k) => keys[k])) {
+      console.log(
+        "Keys pressed:",
+        Object.keys(keys).filter((k) => keys[k])
+      );
+    }
+
     // Track if the player is moving
     let moving = false;
 
     // Default animation
     let animation = "stance";
 
-    // First check for attacks (highest priority) using switch
-    switch (true) {
-      case keys["z"]:
-        this.setAnimation("punch");
+    // Check if we're in the middle of an attack animation
+    if (this.isAttacking) {
+      // Continue the current attack animation
+      animation = this.attackType;
+
+      // Get the animation frames for the current attack
+      const attackFrames = this.animations[this.attackType];
+
+      // Only increment attack counter when frame changes
+      if (this.frameTimer === 0) {
+        this.attackFrameCount++;
+      }
+
+      // Check if we've played through all frames once
+      // This is the key fix - we compare with actual frame count
+      if (this.attackFrameCount >= attackFrames.length) {
+        // Animation complete, reset attack state
+        this.isAttacking = false;
+        this.attackType = null;
+        this.attackFrameCount = 0;
+        this.completedOneCycle = false;
+
+        // IMPORTANT: Make sure we switch to a valid stance frame
+        this.frameIndex = 0;
+        this.frameTimer = 0;
+
+        // Explicitly set animation to stance
+        this.setAnimation("stance");
+      } else {
+        // Still attacking, don't process other inputs
+        this.setAnimation(animation);
         return;
-      case keys["x"]:
-        this.setAnimation("kick");
-        return;
+      }
+    }
+
+    // Not currently attacking, so check for new attacks
+    // For actions that should only happen once per key press:
+    if (justPressed["z"] && !this.isAttacking) {
+      this.isAttacking = true;
+      this.attackType = "punch";
+      this.attackFrameCount = 0;
+      this.setAnimation("punch");
+      return;
+    }
+
+    if (justPressed["x"] && !this.isAttacking) {
+      this.isAttacking = true;
+      this.attackType = "kick";
+      this.attackFrameCount = 0;
+      this.setAnimation("kick");
+      return;
     }
 
     // Handle jumping physics
@@ -132,38 +236,41 @@ class Player {
       }
 
       animation = "jump";
-      return; // Skip other movement while jumping
+      // REMOVED return - allow horizontal movement during jumps
     }
 
     // Check for crouch
-    if (keys["ArrowDown"]) {
+    if (keys["ArrowDown"] && !this.isJumping) {
+      // Don't allow crouch during jump
       this.isCrouching = true;
       animation = "crouch";
-      return; // Skip other movement while crouching
+      // REMOVED return - but don't move horizontally while crouching
     } else {
       this.isCrouching = false;
     }
 
     // Start jump on ArrowUp if not already jumping
-    if (keys["ArrowUp"] && !this.isJumping) {
+    if (keys["ArrowUp"] && !this.isJumping && !this.isCrouching) {
       this.isJumping = true;
       this.jumpVelocity = this.jumpSpeed;
       animation = "jump";
-      return; // Skip other movement when starting a jump
+      // REMOVED return - allow horizontal movement when starting jump
     }
 
-    // Process horizontal movement with if statements
-    if (keys["ArrowLeft"]) {
-      this.x -= this.speed;
-      this.facingRight = false;
-      animation = "walk_backwards";
-      moving = true;
-    }
-    if (keys["ArrowRight"]) {
-      this.x += this.speed;
-      this.facingRight = true;
-      animation = "walk_forward";
-      moving = true;
+    // Process horizontal movement if not crouching
+    if (!this.isCrouching) {
+      if (keys["ArrowLeft"]) {
+        this.x -= this.speed;
+        this.facingRight = false;
+        if (!this.isJumping) animation = "walk_backwards"; // Only change animation if not jumping
+        moving = true;
+      }
+      if (keys["ArrowRight"]) {
+        this.x += this.speed;
+        this.facingRight = true;
+        if (!this.isJumping) animation = "walk_forward"; // Only change animation if not jumping
+        moving = true;
+      }
     }
 
     // Set the appropriate animation

@@ -9,7 +9,7 @@ export class SpriteManager {
       const response = await fetch(jsonPath);
       this.spriteData = await response.json();
       this.isLoaded = true;
-      console.log("Sprite data loaded successfully");
+
       return this.spriteData;
     } catch (error) {
       console.error("Failed to load sprite data:", error);
@@ -17,19 +17,34 @@ export class SpriteManager {
   }
 
   getFrameData(frameName) {
-    if (!this.isLoaded) return null;
+    if (!this.isLoaded || !this.spriteData.frames[frameName]) {
+      return null;
+    }
     return this.spriteData.frames[frameName];
   }
 
   getAnimationFrames(prefix) {
-    if (!this.isLoaded) return [];
+    if (!this.isLoaded) {
+      return [];
+    }
 
-    // Encontra os nomes dos frames que começam com o prefixo
-    // e os ordena para garantir a ordem correta dos frames
-    const frameNames = Object.keys(this.spriteData.frames)
-      .filter((name) => name.startsWith(prefix))
-      .sort(); // Sort para garantir a ordem correta
+    // Find all frames that match the prefix
+    const frameNames = Object.keys(this.spriteData.frames).filter((name) =>
+      name.startsWith(prefix)
+    );
 
+    // Sort frames numerically
+    frameNames.sort((a, b) => {
+      // Extract just the numeric part from between "-" and ".png"
+      const numA = parseInt(a.split("-")[1].split(".")[0]);
+      const numB = parseInt(b.split("-")[1].split(".")[0]);
+
+      return numA - numB;
+    });
+
+    // Debug the sorted order
+    console.log(`Sorted ${prefix} frames:`, frameNames);
+    
     return frameNames;
   }
 }
