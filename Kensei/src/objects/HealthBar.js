@@ -18,7 +18,12 @@ class HealthBar {
     ctx.strokeRect(this.x - 2, this.y - 2, this.width + 4, this.height + 4);
 
     // Background
-    const bgGradient = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
+    const bgGradient = ctx.createLinearGradient(
+      this.x,
+      this.y,
+      this.x + this.width,
+      this.y
+    );
     bgGradient.addColorStop(0, "#333");
     bgGradient.addColorStop(1, "#111");
     ctx.fillStyle = bgGradient;
@@ -31,12 +36,22 @@ class HealthBar {
     let healthGradient;
     if (this.color === "p1") {
       // Player 1: orange → yellow (left to right)
-      healthGradient = ctx.createLinearGradient(this.x, this.y, this.x + healthWidth, this.y);
+      healthGradient = ctx.createLinearGradient(
+        this.x,
+        this.y,
+        this.x + healthWidth,
+        this.y
+      );
       healthGradient.addColorStop(0, "#ff6600"); // orange
       healthGradient.addColorStop(1, "#ffff00"); // yellow
     } else if (this.color === "p2") {
       // Player 2: yellow → orange (right to left)
-      healthGradient = ctx.createLinearGradient(this.x + healthWidth, this.y, this.x, this.y);
+      healthGradient = ctx.createLinearGradient(
+        this.x + healthWidth,
+        this.y,
+        this.x,
+        this.y
+      );
       healthGradient.addColorStop(0, "#ff6600"); // yellow
       healthGradient.addColorStop(1, "#ffff00"); // orange
     } else {

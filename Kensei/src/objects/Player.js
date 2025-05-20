@@ -23,8 +23,9 @@ class Player {
     // Jump properties
     this.isJumping = false;
     this.jumpVelocity = 0;
-    this.jumpSpeed = -12; // Negative because y goes down in canvas
+    this.jumpSpeed = -18; // Increased by 50% for a much higher jump
     this.gravity = 0.6;
+    // Set the ground position to be the bottom of the sprite
     this.groundY = y; // Store initial y as ground position
 
     // Crouch state
@@ -45,11 +46,20 @@ class Player {
       kick: 15,
     };
 
+    // Add these new properties
+    this.animationScales = {}; // Store scale for each animation
+    this.currentScale = 1; // Current animation's scale factor
+
+    // Use a single consistent scale for ALL animations
+    this.globalScale = null;
+
     // Load sprite data
     this.spriteManager
       .loadSpriteData("./assets/spritesheets/spritesheet.json")
       .then(() => {
         this.initAnimations();
+        // Calculate global scale ONCE for all animations
+        this.calculateGlobalScale();
         this.animationsReady = true;
         console.log("Player animations fully initialized");
       })
@@ -68,6 +78,9 @@ class Player {
       crouch: this.spriteManager.getAnimationFrames("crouch-"),
       punch: this.spriteManager.getAnimationFrames("light_attack-"),
       kick: this.spriteManager.getAnimationFrames("kick-"),
+      jump_attack: this.spriteManager.getAnimationFrames("jump_attack-"),
+      crouch_attack: this.spriteManager.getAnimationFrames("crouch_attack-"),
+      crouch_walk: this.spriteManager.getAnimationFrames("crouch_walk-"),
     };
 
     // Check if animations are empty
@@ -79,6 +92,39 @@ class Player {
       console.warn("Empty animations:", emptyAnimations);
     } else {
       console.log("All animations loaded successfully");
+    }
+  }
+
+  // Add this new method to calculate global scale
+  calculateGlobalScale() {
+    // Find maximum dimensions across ALL animations
+    let maxWidth = 0;
+    let maxHeight = 0;
+
+    // Check all animations
+    for (const animName in this.animations) {
+      const frames = this.animations[animName];
+
+      // Check all frames in this animation
+      for (const frameName of frames) {
+        const frameData = this.spriteManager.getFrameData(frameName);
+        if (!frameData || !frameData.frame) continue;
+
+        maxWidth = Math.max(maxWidth, frameData.frame.w);
+        maxHeight = Math.max(maxHeight, frameData.frame.h);
+      }
+    }
+
+    // Calculate a single scale based on maximum dimensions
+    if (maxWidth > 0 && maxHeight > 0) {
+      // Apply a size multiplier (1.3 = 30% larger)
+      const sizeMultiplier = 2.7;
+      this.globalScale =
+        Math.min(this.width / maxWidth, this.height / maxHeight) *
+        sizeMultiplier;
+      console.log(
+        `Global scale set to: ${this.globalScale}, from max dims: ${maxWidth}x${maxHeight}`
+      );
     }
   }
 
@@ -124,17 +170,27 @@ class Player {
     const frameData = this.spriteManager.getFrameData(frameName);
     if (!frameData) return;
 
-    // Draw the current frame
+    // Draw the current frame, maintaining aspect ratio
+    const frameWidth = frameData.frame.w;
+    const frameHeight = frameData.frame.h;
+
+    // Use GLOBAL scale instead of animation-specific scale
+    // This ensures ALL animations use the same scale
+    const scale = this.globalScale || 1;
+    const scaledWidth = frameWidth * scale;
+    const scaledHeight = frameHeight * scale;
+
+    // Draw centered horizontally, but aligned to bottom vertically
     ctx.drawImage(
       this.sprite,
       frameData.frame.x,
       frameData.frame.y,
       frameData.frame.w,
       frameData.frame.h,
-      this.x,
-      this.y,
-      this.width,
-      this.height
+      this.x + (this.width - scaledWidth) / 2, // Center horizontally
+      this.y + (this.height - scaledHeight), // Align to bottom
+      scaledWidth,
+      scaledHeight
     );
 
     // Update animation frame
@@ -151,6 +207,7 @@ class Player {
       this.currentAnimation = name;
       this.frameIndex = 0; // Start from the first frame
       this.frameTimer = 0;
+      // Don't recalculate scale here
     }
   }
 
@@ -236,7 +293,6 @@ class Player {
       }
 
       animation = "jump";
-      // REMOVED return - allow horizontal movement during jumps
     }
 
     // Check for crouch

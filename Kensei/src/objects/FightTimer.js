@@ -16,20 +16,20 @@ class FightTimer {
   }
 
   draw() {
-  const timerText = ` ${this.remaining} `;
-  ctx.font = "48px 'Orbitron', sans-serif";
-  ctx.fillStyle = "#f1c40f";
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 2;
+    const timerText = ` ${this.remaining} `;
+    ctx.font = "48px 'Orbitron', sans-serif";
+    ctx.fillStyle = "#f1c40f";
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
 
-  const textWidth = ctx.measureText(timerText).width;
-  const x = canvas.width / 2 - textWidth / 2;
-  const y = 50;
+    const textWidth = ctx.measureText(timerText).width;
+    const x = canvas.width / 2 - textWidth / 2;
+    const y = 50;
 
-  // Efeito Shadow
-  ctx.strokeText(timerText, x, y);
-  ctx.fillText(timerText, x, y);
-}
+    // Efeito Shadow
+    ctx.strokeText(timerText, x, y);
+    ctx.fillText(timerText, x, y);
+  }
 
   reset() {
     this.remaining = this.duration;

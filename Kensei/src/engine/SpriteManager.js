@@ -35,16 +35,16 @@ export class SpriteManager {
 
     // Sort frames numerically
     frameNames.sort((a, b) => {
-      // Extract just the numeric part from between "-" and ".png"
-      const numA = parseInt(a.split("-")[1].split(".")[0]);
-      const numB = parseInt(b.split("-")[1].split(".")[0]);
+      // Extract the numeric part from between "-" and ".png" using a regex
+      const numA = parseInt(a.match(/-(\d+)\.png$/)?.[1]);
+      const numB = parseInt(b.match(/-(\d+)\.png$/)?.[1]);
 
       return numA - numB;
     });
 
     // Debug the sorted order
     console.log(`Sorted ${prefix} frames:`, frameNames);
-    
+
     return frameNames;
   }
 }
