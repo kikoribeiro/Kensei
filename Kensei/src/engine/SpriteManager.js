@@ -33,12 +33,21 @@ export class SpriteManager {
       name.startsWith(prefix)
     );
 
-    // Sort frames numerically
+    // Sort frames numerically - improved version
     frameNames.sort((a, b) => {
-      // Extract the numeric part from between "-" and ".png" using a regex
-      const numA = parseInt(a.match(/-(\d+)\.png$/)?.[1]);
-      const numB = parseInt(b.match(/-(\d+)\.png$/)?.[1]);
+      // Extract frame numbers more reliably
+      let numA = 0;
+      let numB = 0;
 
+      // Extract numbers after the dash
+      const matchA = a.match(/-(\d+)/);
+      const matchB = b.match(/-(\d+)/);
+
+      // If we found matches, parse them as integers
+      if (matchA && matchA[1]) numA = parseInt(matchA[1], 10);
+      if (matchB && matchB[1]) numB = parseInt(matchB[1], 10);
+
+      // Compare numerically
       return numA - numB;
     });
 
