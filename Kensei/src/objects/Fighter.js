@@ -1,5 +1,4 @@
 import { ctx } from "../engine/Canvas.js";
-import { SpriteManager } from "../engine/SpriteManager.js";
 
 class Fighter {
   constructor(x, y, width, height, spritesheetPath, name = "fighter") {
@@ -12,7 +11,7 @@ class Fighter {
 
     // Visual properties
     this.color = "#ff0000"; // Default color for placeholder
-    // this.facing = "right";  // Direction fighter is facing
+    this.facing = "right"; // Direction fighter is facing
     this.globalScale = null;
 
     // Physics properties
@@ -46,56 +45,36 @@ class Fighter {
     this.frameTimer = 0;
     this.frameDelay = 6; // Animation speed (higher = slower)
     this.animationsReady = false;
-    this.animationScales = {};
-    this.currentScale = 1;
 
-    // Sprite management
-    this.spriteManager = new SpriteManager();
-    this.sprite = new Image();
+    // Initialize empty animations object (will be populated by subclasses)
+    this.animations = {};
 
-    // Add this new property to track animations that should hold their last frame
+    // Animation-specific speeds
+    this.animationSpeeds = {
+      punch: 3, // Faster attack
+      kick: 3, // Faster attack
+      special_move: 3, // Faster special move
+      stance: 6,
+      walk_forward: 6,
+      walk_backwards: 6,
+      jump: 5,
+      crouch: 5,
+      hit: 4,
+      crouch_hit: 4,
+    };
+
+    // Add animations that should hold their last frame
     this.holdLastFrameAnimations = ["crouch", "jump"];
 
-    // Load the fighter's spritesheet
-    this.loadSprites(spritesheetPath);
-  }
-
-  loadSprites(spritesheetPath) {
-    this.sprite.src = spritesheetPath.replace(".json", ".png");
+    // Load sprite sheet
+    this.sprite = new Image();
+    this.sprite.src = spritesheetPath;
     this.sprite.onload = () => {
       console.log(`Loaded sprite for ${this.name}`);
+      // Note: No initAnimations call here - subclass should call it
+      this.calculateGlobalScale();
+      this.animationsReady = true;
     };
-
-    this.spriteManager
-      .loadSpriteData(spritesheetPath)
-      .then(() => {
-        this.initAnimations();
-        this.calculateGlobalScale();
-        this.animationsReady = true;
-        console.log(`${this.name} animations fully initialized`);
-      })
-      .catch((err) => {
-        console.error(`Failed to load animations for ${this.name}:`, err);
-      });
-  }
-
-  initAnimations() {
-    // Default animations - each fighter can override with their specific animations
-    this.animations = {
-      stance: this.spriteManager.getAnimationFrames("stance-"),
-      walk_forward: this.spriteManager.getAnimationFrames("walk_forward-"),
-      walk_backwards: this.spriteManager.getAnimationFrames("walk_backwards-"),
-      jump: this.spriteManager.getAnimationFrames("jump-"),
-      crouch: this.spriteManager.getAnimationFrames("crouch-"),
-      punch: this.spriteManager.getAnimationFrames("light_attack-"),
-      kick: this.spriteManager.getAnimationFrames("kick-"),
-      block: this.spriteManager.getAnimationFrames("block-"),
-      hit: this.spriteManager.getAnimationFrames("getting_hit-"),
-      crouch_hit: this.spriteManager.getAnimationFrames("getting_hit_crouch-"),
-    };
-
-    // Set initial animation
-    this.setAnimation("stance");
   }
 
   calculateGlobalScale() {
@@ -108,18 +87,15 @@ class Fighter {
       const frames = this.animations[animName];
 
       // Check all frames in this animation
-      for (const frameName of frames) {
-        const frameData = this.spriteManager.getFrameData(frameName);
-        if (!frameData || !frameData.frame) continue;
-
-        maxWidth = Math.max(maxWidth, frameData.frame.w);
-        maxHeight = Math.max(maxHeight, frameData.frame.h);
+      for (const frame of frames) {
+        maxWidth = Math.max(maxWidth, frame.w);
+        maxHeight = Math.max(maxHeight, frame.h);
       }
     }
 
     // Calculate a single scale based on maximum dimensions
     if (maxWidth > 0 && maxHeight > 0) {
-      const sizeMultiplier = 1.8;
+      const sizeMultiplier = 1;
       this.globalScale =
         Math.min(this.width / maxWidth, this.height / maxHeight) *
         sizeMultiplier;
@@ -144,20 +120,19 @@ class Fighter {
       return;
     }
 
-    // First check if animations are initialized
-    const animationsInitialized =
-      this.animations &&
-      Object.keys(this.animations).length > 0 &&
-      this.spriteManager.isLoaded;
-
     // During loading phase, draw a placeholder
-    if (!animationsInitialized) {
+    if (
+      !this.animationsReady ||
+      !this.sprite.complete ||
+      !this.animations ||
+      Object.keys(this.animations).length === 0
+    ) {
       ctx.fillStyle = this.color || "red";
       ctx.fillRect(this.x, this.y, this.width, this.height);
       return;
     }
 
-    // Get current animation frames (with safety check)
+    // Get current animation frames
     const frames = this.animations[this.currentAnimation];
     if (!frames || frames.length === 0) {
       console.error(`No frames found for animation: ${this.currentAnimation}`);
@@ -171,21 +146,13 @@ class Fighter {
       this.frameIndex = 0;
     }
 
-    // Get current frame name
-    const frameName = frames[this.frameIndex];
+    // Get current frame data
+    const frame = frames[this.frameIndex];
 
-    // Get frame data from the sprite sheet
-    const frameData = this.spriteManager.getFrameData(frameName);
-    if (!frameData || !frameData.frame) return;
-
-    // Draw the current frame, maintaining aspect ratio
-    const frameWidth = frameData.frame.w;
-    const frameHeight = frameData.frame.h;
-
-    // Use the consistent scale for this animation
+    // Use the consistent scale for all animations
     const scale = this.globalScale || 1;
-    const scaledWidth = frameWidth * scale;
-    const scaledHeight = frameHeight * scale;
+    const scaledWidth = frame.w * scale;
+    const scaledHeight = frame.h * scale;
 
     // Save context for transformations
     ctx.save();
@@ -199,28 +166,28 @@ class Fighter {
     //   // Draw centered horizontally, but aligned to bottom vertically
     //   ctx.drawImage(
     //     this.sprite,
-    //     frameData.frame.x,
-    //     frameData.frame.y,
-    //     frameData.frame.w,
-    //     frameData.frame.h,
+    //     frame.x,
+    //     frame.y,
+    //     frame.w,
+    //     frame.h, // Source rect
     //     this.width - (this.width - scaledWidth) / 2 - scaledWidth, // Center horizontally (flipped)
     //     this.y + (this.height - scaledHeight), // Align to bottom
     //     scaledWidth,
-    //     scaledHeight
+    //     scaledHeight // Destination size
     //   );
     // } else {
-    // Normal drawing (facing right)
-    ctx.drawImage(
-      this.sprite,
-      frameData.frame.x,
-      frameData.frame.y,
-      frameData.frame.w,
-      frameData.frame.h,
-      this.x + (this.width - scaledWidth) / 2, // Center horizontally
-      this.y + (this.height - scaledHeight), // Align to bottom
-      scaledWidth,
-      scaledHeight
-    );
+      // Normal drawing (facing right)
+      ctx.drawImage(
+        this.sprite,
+        frame.x,
+        frame.y,
+        frame.w,
+        frame.h, // Source rect
+        this.x + (this.width - scaledWidth) / 2, // Center horizontally
+        this.y + (this.height - scaledHeight), // Align to bottom
+        scaledWidth,
+        scaledHeight // Destination size
+      );
     // }
 
     // Restore context
@@ -228,7 +195,12 @@ class Fighter {
 
     // Update animation frame
     this.frameTimer++;
-    if (this.frameTimer >= this.frameDelay) {
+
+    // Get the appropriate speed for this animation (or use default)
+    const currentDelay =
+      this.animationSpeeds[this.currentAnimation] || this.frameDelay;
+
+    if (this.frameTimer >= currentDelay) {
       this.frameTimer = 0;
 
       // Check if this is a hold-last-frame animation that's at its end
@@ -243,15 +215,15 @@ class Fighter {
       }
     }
 
-    // Optional: Draw hitbox/hurtbox for debugging
-    // if (window.DEBUG_MODE) {
-    //   this.drawHitboxes(ctx);
-    // }
+    // Optional: Draw hitbox for debugging
+    if (window.DEBUG_MODE) {
+      this.drawHitboxes(ctx);
+    }
   }
 
   drawHitboxes(ctx) {
     // Draw character hitbox
-    ctx.strokeStyle = "red";
+    ctx.strokeStyle = "blue";
     ctx.lineWidth = 2;
     ctx.strokeRect(this.x, this.y, this.width, this.height);
 
@@ -262,7 +234,7 @@ class Fighter {
 
       let hitboxX =
         this.facing === "right"
-          ? this.x + this.width / 2
+          ? this.x + this.attackBox.x
           : this.x - this.attackBox.width;
 
       ctx.strokeRect(
@@ -322,7 +294,8 @@ class Fighter {
       // Check if the hit animation is complete
       if (
         this.frameIndex >= hitFrames.length - 1 &&
-        this.frameTimer >= this.frameDelay - 1
+        this.frameTimer >=
+          (this.animationSpeeds[animation] || this.frameDelay) - 1
       ) {
         this.isHit = false;
       } else {
@@ -332,11 +305,11 @@ class Fighter {
       }
     }
 
-    // Implement basic movement
+    // Movement logic
     if (keys["ArrowUp"]) {
       if (!this.isJumping) {
         this.isJumping = true;
-        this.jumpVelocity = this.jumpSpeed;
+        this.velocityY = this.jumpSpeed;
         animation = "jump";
       }
     }
@@ -368,15 +341,15 @@ class Fighter {
 
     // Apply gravity and jumping physics
     if (this.isJumping) {
-      this.y += this.jumpVelocity;
-      this.jumpVelocity += this.gravity;
+      this.y += this.velocityY;
+      this.velocityY += this.gravity;
       animation = "jump";
 
       // Check if we've landed
       if (this.y >= this.groundY) {
         this.y = this.groundY;
         this.isJumping = false;
-        this.jumpVelocity = 0;
+        this.velocityY = 0;
       }
     }
 
