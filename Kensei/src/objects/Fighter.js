@@ -154,40 +154,50 @@ class Fighter {
     const scaledWidth = frame.w * scale;
     const scaledHeight = frame.h * scale;
 
+    // Calculate anchor-based positioning
+    const anchorX = frame.anchorX || frame.w / 2; // Default to center if no anchor
+    const anchorY = frame.anchorY || frame.h; // Default to bottom if no anchor
+
+    const scaledAnchorX = anchorX * scale;
+    const scaledAnchorY = anchorY * scale;
+
     // Save context for transformations
     ctx.save();
 
+    // Ensure full opacity
+    ctx.globalAlpha = 1.0;
 
-    // Check if we need to flip horizontally based on facing direction
+    // // Check if we need to flip horizontally based on facing direction
     // if (this.facing === "left") {
     //   ctx.scale(-1, 1);
     //   ctx.translate(-this.x - this.width, 0);
 
-    //   // Draw centered horizontally, but aligned to bottom vertically
+    //   // Draw using anchor point (flipped)
     //   ctx.drawImage(
     //     this.sprite,
     //     frame.x,
     //     frame.y,
     //     frame.w,
     //     frame.h, // Source rect
-    //     this.width - (this.width - scaledWidth) / 2 - scaledWidth, // Center horizontally (flipped)
-    //     this.y + (this.height - scaledHeight), // Align to bottom
+    //     this.x + this.width / 2 - (frame.w - scaledAnchorX), // Anchor-based X (flipped)
+    //     this.y + this.height - scaledAnchorY, // Anchor-based Y
     //     scaledWidth,
     //     scaledHeight // Destination size
     //   );
-    // } else {
-      // Normal drawing (facing right)
-      ctx.drawImage(
-        this.sprite,
-        frame.x,
-        frame.y,
-        frame.w,
-        frame.h, // Source rect
-        this.x + (this.width - scaledWidth) / 2, // Center horizontally
-        this.y + (this.height - scaledHeight), // Align to bottom
-        scaledWidth,
-        scaledHeight // Destination size
-      );
+    // }
+    // else {
+    // Normal drawing (facing right)
+    ctx.drawImage(
+      this.sprite,
+      frame.x,
+      frame.y,
+      frame.w,
+      frame.h, // Source rect
+      this.x + this.width / 2 - scaledAnchorX, // Anchor-based X
+      this.y + this.height - scaledAnchorY, // Anchor-based Y
+      scaledWidth,
+      scaledHeight // Destination size
+    );
     // }
 
     // Restore context
