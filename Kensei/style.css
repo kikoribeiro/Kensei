@@ -4,5 +4,6 @@ body {
   overflow: hidden;
 }
 #gameCanvas {
+  width: 100%;
   display: block;
 }

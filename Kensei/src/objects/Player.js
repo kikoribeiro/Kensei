@@ -1,8 +1,9 @@
 import Fighter from "./Fighter.js";
+import { FighterDirection } from "../constants/fighter.js";
 
 class Player extends Fighter {
-  constructor(x, y, width, height) {
-    // Call parent constructor with both PNG and JSON paths
+  constructor(x, y, width, height, direction = FighterDirection.RIGHT) {
+    // Call parent constructor with all required parameters
     super(
       x,
       y,
@@ -10,6 +11,7 @@ class Player extends Fighter {
       height,
       "./assets/spritesheets/spritesheetRyu.png",
       "./assets/spritesheets/spritesheetRyu.json",
+      direction,
       "player1"
     );
 
@@ -19,9 +21,13 @@ class Player extends Fighter {
   }
 
   // Override update to add special move input
-  update(keys, justPressed = {}) {
-    // Call parent update first
-    super.update(keys, justPressed);
+  update(keys, justPressed = {}, opponent = null) {
+    console.log(
+      `Player update called with opponent: ${opponent?.name || "null"}`
+    );
+
+    // Call parent update
+    super.update(keys, justPressed, opponent);
 
     // Add special move input (only if not already attacking/jumping/crouching)
     if (!this.isAttacking && !this.isJumping && !this.isCrouching) {

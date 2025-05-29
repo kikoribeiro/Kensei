@@ -3,8 +3,10 @@ import Player from "../objects/player.js";
 import Background from "../objects/Background.js";
 import HealthBar from "../objects/HealthBar.js";
 import FightTimer from "../objects/FightTimer.js";
+import Enemy from "../objects/Enemy.js";
 import { keys, justPressed, resetKeyPress } from "./InputHandler.js";
 import { canvas, ctx, clearCanvas, initCanvas } from "./Canvas.js";
+import { FighterDirection } from "../constants/fighter.js";
 
 // Game objects
 let player, player2;
@@ -36,11 +38,16 @@ export function gameLoop(timestamp) {
     clearCanvas?.() || ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (gameInitialized && background && player) {
-      // Update game objects
-      player.update(keys, justPressed);
-      if (player2) {
-        player2.update({}, {}); // Add player2 controls later
+      // Update fighters
+      player.update(keys, justPressed, player2);
+      player2.update({}, {}, player);
+
+      // Handle pushbox collisions between fighters
+      if (player && player2) {
+        // Only resolve once to avoid double-processing
+        player.resolvePushboxCollision(player2);
       }
+
       background.update();
 
       // Draw everything (no camera transformations)
@@ -86,9 +93,29 @@ export function startGame() {
   if (typeof initCanvas === "function") initCanvas();
 
   try {
-    // Create players
-    player = new Player(100, canvas.height - 250, 160, 225);
-    player2 = new Player(400, canvas.height - 250, 160, 225);
+    // Create players with correct parameters
+    player = new Player(
+      400,
+      canvas.height - 250,
+      160,
+      225,
+      FighterDirection.RIGHT
+    );
+
+    player2 = new Enemy(
+      1500,
+      canvas.height - 250,
+      160,
+      225,
+      FighterDirection.LEFT
+    );
+
+    player2.setDifficulty("test");
+
+    // Add debugging to confirm player2 is created
+    console.log("Created player:", player);
+    console.log("Created player2:", player2);
+    console.log("Player2 name:", player2?.name);
 
     background = new Background();
 
