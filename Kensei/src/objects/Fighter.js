@@ -1,7 +1,15 @@
 import { ctx } from "../engine/Canvas.js";
 
 class Fighter {
-  constructor(x, y, width, height, spritesheetPath, name = "fighter") {
+  constructor(
+    x,
+    y,
+    width,
+    height,
+    spritesheetPath,
+    jsonPath,
+    name = "fighter"
+  ) {
     // Position and dimensions
     this.x = x;
     this.y = y;
@@ -46,14 +54,15 @@ class Fighter {
     this.frameDelay = 6; // Animation speed (higher = slower)
     this.animationsReady = false;
 
-    // Initialize empty animations object (will be populated by subclasses)
+    // Initialize empty animations object (will be populated from JSON)
     this.animations = {};
+    this.spriteData = null;
 
     // Animation-specific speeds
     this.animationSpeeds = {
-      punch: 3, // Faster attack
-      kick: 3, // Faster attack
-      special_move: 3, // Faster special move
+      punch: 3,
+      kick: 3,
+      special_move: 2, // Slower for special move
       stance: 6,
       walk_forward: 6,
       walk_backwards: 6,
@@ -61,20 +70,148 @@ class Fighter {
       crouch: 5,
       hit: 4,
       crouch_hit: 4,
+      crouch_kick: 3,
+      crouch_punch: 3,
+      jump_front: 5,
+      uppercut: 3,
+      victory: 8, // Slower for victory pose
+      dead: 10, // Very slow death animation
+      turn: 4,
+      face: 8,
+      name: 8,
     };
 
     // Add animations that should hold their last frame
     this.holdLastFrameAnimations = ["crouch", "jump"];
 
-    // Load sprite sheet
-    this.sprite = new Image();
-    this.sprite.src = spritesheetPath;
-    this.sprite.onload = () => {
-      console.log(`Loaded sprite for ${this.name}`);
-      // Note: No initAnimations call here - subclass should call it
-      this.calculateGlobalScale();
-      this.animationsReady = true;
+    // Load sprite sheet and JSON data
+    this.loadSpritesheet(spritesheetPath, jsonPath);
+  }
+
+  async loadSpritesheet(spritesheetPath, jsonPath) {
+    try {
+      // Load JSON data first
+      const response = await fetch(jsonPath);
+      this.spriteData = await response.json();
+
+      // Load sprite image
+      this.sprite = new Image();
+      this.sprite.onload = () => {
+        console.log(`Loaded sprite for ${this.name}`);
+        this.initAnimationsFromJSON();
+        this.calculateGlobalScale();
+        this.animationsReady = true;
+      };
+      this.sprite.src = spritesheetPath;
+    } catch (error) {
+      console.error(`Failed to load spritesheet data for ${this.name}:`, error);
+    }
+  }
+
+  initAnimationsFromJSON() {
+    if (!this.spriteData || !this.spriteData.frames) {
+      console.error("No sprite data available");
+      return;
+    }
+
+    // Parse JSON spritesheet data
+    const frames = this.spriteData.frames;
+
+    // Group frames by animation name
+    const animationGroups = {};
+
+    for (const frameName in frames) {
+      const frameData = frames[frameName];
+
+      // Extract animation name from frame name
+      const animationName = this.extractAnimationName(frameName);
+
+      if (!animationGroups[animationName]) {
+        animationGroups[animationName] = [];
+      }
+
+      // Convert JSON frame data to our format
+      const frame = {
+        x: frameData.frame.x,
+        y: frameData.frame.y,
+        w: frameData.frame.w,
+        h: frameData.frame.h,
+        // Calculate anchor points (center-bottom for fighting game characters)
+        anchorX: frameData.frame.w / 2,
+        anchorY: frameData.frame.h,
+      };
+
+      animationGroups[animationName].push({
+        frame,
+        frameName,
+      });
+    }
+
+    // Sort frames by name to ensure correct order
+    for (const animName in animationGroups) {
+      animationGroups[animName].sort((a, b) =>
+        a.frameName.localeCompare(b.frameName)
+      );
+      this.animations[animName] = animationGroups[animName].map(
+        (item) => item.frame
+      );
+    }
+
+    // Map common animation names to our expected names
+    this.mapAnimationNames();
+
+    console.log(
+      `Loaded animations for ${this.name}:`,
+      Object.keys(this.animations)
+    );
+  }
+
+  extractAnimationName(frameName) {
+    // Remove file extension
+    const nameWithoutExt = frameName.replace(/\.(png|jpg|jpeg)$/i, "");
+
+    // For your JSON format, extract everything before the last dash and number
+    // e.g., "stance-0.png" -> "stance", "walk-forward-0.png" -> "walk-forward"
+    const animationName = nameWithoutExt.replace(/-\d+$/, "");
+
+    return animationName.toLowerCase();
+  }
+
+  mapAnimationNames() {
+    // Map the exact JSON animation names to our expected game names
+    const nameMapping = {
+      // Keep exact matches
+      stance: "stance",
+      "walk-forward": "walk_forward",
+      "walk-backwards": "walk_backwards",
+      punch: "punch",
+      kick: "kick",
+      jump: "jump",
+      crouch: "crouch",
+      hit: "hit",
+      "crouch-hit": "crouch_hit",
+      "special-move": "special_move",
+
+      // Additional mappings from JSON
+      "crouch-kick": "crouch_kick",
+      "crouch-punch": "crouch_punch",
+      "jump-front": "jump_front",
+      uppercut: "uppercut",
+      victory: "victory",
+      dead: "dead",
+      turn: "turn",
+      face: "face",
+      name: "name",
     };
+
+    const newAnimations = {};
+
+    for (const [originalName, frames] of Object.entries(this.animations)) {
+      const mappedName = nameMapping[originalName] || originalName;
+      newAnimations[mappedName] = frames;
+    }
+
+    this.animations = newAnimations;
   }
 
   calculateGlobalScale() {
@@ -437,6 +574,21 @@ class Fighter {
       this.y + this.attackBox.y < opponent.y + opponent.height &&
       this.y + this.attackBox.y + this.attackBox.height > opponent.y
     );
+  }
+
+  // Update the checkScreenBounds method to work with static boundaries
+  checkScreenBounds() {
+    // Get canvas for boundary checking
+    const canvas = document.querySelector("canvas");
+    if (!canvas) return true;
+
+    // Define stage boundaries with padding
+    const padding = 20;
+    const leftBound = padding;
+    const rightBound = canvas.width - this.width - padding;
+
+    // Check if fighter is within bounds
+    return this.x >= leftBound && this.x <= rightBound;
   }
 
   reset() {
