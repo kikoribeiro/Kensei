@@ -1,10 +1,11 @@
+// constante para a direção do Fighter
 export const FighterDirection = {
   LEFT: -1,
   RIGHT: 1,
 };
 
+// constante que tem todo o tipo de estados do Fighter, moves, andar, victory...
 export const FighterState = {
-  // Basic states
   STANCE: "stance",
   WALK_FORWARD: "walk_forward",
   WALK_BACKWARDS: "walk_backwards",

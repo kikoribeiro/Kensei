@@ -1,12 +1,17 @@
 import { canvas } from "../engine/Canvas.js";
 
+/**
+ * Class para criar o background do jogo.
+ */
 class Background {
   constructor(
+    //Variáveis para definir a posição e tamanho do background
     sourceX = 0,
     sourceY = 0,
     sourceWidth = null,
     sourceHeight = null
   ) {
+    //Criação da imagem do background
     this.image = new Image();
     this.image.src = "./assets/backgrounds/Empty_Dojo.png";
     this.imageLoaded = false;
@@ -30,22 +35,19 @@ class Background {
     };
   }
 
+  //Desenho do background no canvas
   draw(ctx) {
-    try {
-      ctx.drawImage(
-        this.image,
-        0,
-        0, 
-        this.image.width, 
-        this.image.height,
-        this.x, 
-        this.y,
-        this.width,
-        this.height
-      );
-    } catch (error) {
-      console.error("Error drawing background:", error);
-    }
+    ctx.drawImage(
+      this.image,
+      0,
+      0,
+      this.image.width,
+      this.image.height,
+      this.x,
+      this.y,
+      this.width,
+      this.height
+    );
   }
 
   update() {

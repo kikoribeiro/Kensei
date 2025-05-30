@@ -1,40 +1,43 @@
 window.DEBUG_MODE = true;
+//imports da pasta dos objetos
 import Player from "../objects/player.js";
 import Background from "../objects/Background.js";
 import StatusBar from "../objects/StatusBar.js";
 import Enemy from "../objects/Enemy.js";
-import { keys, justPressed, resetKeyPress } from "./InputHandler.js";
+
+//input handler
+import { keys, justPressed,resetKeyPress } from "./InputHandler.js";
+//canvas
 import { canvas, ctx, clearCanvas, initCanvas } from "./Canvas.js";
+//constantes
 import { FighterDirection } from "../constants/fighter.js";
 
-// Game objects
+// Objetos do jogo e
+// Variáveis globais
 let player, player2;
 let background;
 let statusBar;
 let gameInitialized = false;
 let roundOver = false;
 
-// FPS control variables
+// Controlo de FPS para manter 60 FPS constantemente
 const FPS = 60;
 const frameTime = 1000 / FPS;
+// Variável para armazenar o tempo do último frame para calcular deltaTime
+// deltaTime é o tempo entre frames
 let lastFrameTime = 0;
 
 // Loop principal do jogo
 export function gameLoop(timestamp) {
-  if (!ctx || !canvas) {
-    console.log("Canvas or context not ready");
-    requestAnimationFrame(gameLoop);
-    return;
-  }
-
-  // Calculate time since last frame
+  // Calcular deltaTime
   const deltaTime = timestamp - lastFrameTime;
 
-  // Only update if enough time has passed for 60 FPS
+  // Só atualizar o jogo se o deltaTime for maior ou igual ao frameTime
+  // Isto garante que o jogo não atualize mais do que 60 vezes por segundo(60FPS)
   if (deltaTime >= frameTime) {
     lastFrameTime = timestamp - (deltaTime % frameTime);
 
-    // Clear canvas
+    // Limpar o canvas
     if (clearCanvas) {
       clearCanvas();
     } else {
@@ -42,30 +45,31 @@ export function gameLoop(timestamp) {
     }
 
     if (gameInitialized && background && player) {
-      // Update fighters
+      // Atualizar players
       player.update(keys, justPressed, player2);
       player2.update({}, {}, player);
 
-      // Handle pushbox collisions between fighters
+      // Verificação de colisão de pushbox entre Fighters
       if (player && player2) {
         player.resolvePushboxCollision(player2);
       }
 
-      // Update timer
+      // Atualização do contador de tempo
       if (statusBar) {
         statusBar.updateTimer();
-        // UPDATE: Sync health from fighters every frame
+        // Atualização da barra de vida dos Fighters
         statusBar.updateFromFighters(player, player2);
       }
 
-      // Check for attack collisions
+      // Verificação de colisão entre Fighters e de dano
       if (player.checkCollision(player2)) {
         if (!player2.isHit) {
+          // Cada golpe causa 10 de dano
           player2.takeHit(10);
           console.log(`Player2 took hit, health now: ${player2.currentHealth}`);
         }
       }
-
+      //Mesma situação para o player1
       if (player2.checkCollision(player)) {
         if (!player.isHit) {
           player.takeHit(10);
@@ -73,7 +77,7 @@ export function gameLoop(timestamp) {
         }
       }
 
-      // Rest of the game loop...
+      // Desenhar o Background, Fighters e a statusBar
       background.update();
       background.draw(ctx);
       player.draw(ctx);
@@ -84,120 +88,80 @@ export function gameLoop(timestamp) {
       if (statusBar) {
         statusBar.draw();
       }
-
-      // Test damage - UPDATE: Damage the fighters directly
-      if (keys["d"]) {
-        if (player2.currentHealth > 0) {
-          player2.currentHealth = Math.max(0, player2.currentHealth - 5);
-          console.log(
-            `Manual damage to P2, health now: ${player2.currentHealth}`
-          );
-        }
-      }
-
-      if (keys["s"]) {
-        if (player.currentHealth > 0) {
-          player.currentHealth = Math.max(0, player.currentHealth - 5);
-          console.log(
-            `Manual damage to P1, health now: ${player.currentHealth}`
-          );
-        }
-      }
-
-      if (keys["r"]) {
-        statusBar.resetTimer();
-      }
-    } else {
-      // Draw loading message or debug info
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "20px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText("Loading game...", canvas.width / 2, canvas.height / 2);
-
-      console.log("Game not initialized:", {
-        gameInitialized,
-        background: !!background,
-        player: !!player,
-        canvas: { width: canvas.width, height: canvas.height },
-      });
     }
-
-    resetKeyPress();
   }
 
-  // Continue the game loop
+  resetKeyPress();
+  // Atualizar o loop do jogo
+  // Usar requestAnimationFrame para manter o loop
   requestAnimationFrame(gameLoop);
 }
 
 // Iniciar o jogo
 export function startGame() {
-  console.log("Starting game...");
-
-  if (gameInitialized) {
-    console.log("Game already initialized");
-    return;
-  }
-
-  // Force canvas initialization
+  // Forçar a inicialização do canvas
   if (typeof initCanvas === "function") {
-    console.log("Initializing canvas...");
     initCanvas();
   }
 
-  // Check if canvas is ready
-  if (!canvas || !ctx) {
-    console.error("Canvas not ready, retrying in 100ms");
-    setTimeout(startGame, 100);
-    return;
-  }
+  // Variáveis para puder conseguir criar os jogadores dinamicamente
+  // dependendo do tamanho do canvas(ou seja resolução do ecrã do utilizador)
+  const playerWidth = 160;
+  const playerHeight = 225;
+  const groundOffset = 250;
 
-  console.log("Canvas dimensions:", canvas.width, "x", canvas.height);
+  // estas constantes calculam a posição dos jogadores
+  // dependendo do tamanho do canvas
+  const player1X = canvas.width * 0.2; // 20% da margem esquerda
+  const player2X = canvas.width * 0.8 - playerWidth; // 80% da esquerda menos a largura do jogador
+  // Posição Y dos jogadores, para estarem no chão
+  const playerY = canvas.height - groundOffset;
 
-  try {
-    // Create players
-    player = new Player(
-      400,
-      canvas.height - 250,
-      160,
-      225,
-      FighterDirection.RIGHT
-    );
-    player2 = new Enemy(
-      1500,
-      canvas.height - 250,
-      160,
-      225,
-      FighterDirection.LEFT
-    );
-    player2.setDifficulty("test");
+  // Criação dos players(Fighters)
+  player = new Player(
+    player1X,
+    playerY,
+    playerWidth,
+    playerHeight,
+    FighterDirection.RIGHT
+  );
 
-    background = new Background();
-    statusBar = new StatusBar();
+  player2 = new Enemy(
+    player2X,
+    playerY,
+    playerWidth,
+    playerHeight,
+    FighterDirection.LEFT
+  );
 
-    gameInitialized = true;
-    console.log("Game initialized successfully");
+  // Configuarção do player2(Enemy), para a sua dificuldade de jogo
+  player2.setDifficulty("test");
 
-    // Start the game loop if not already running
-    if (!window.gameLoopRunning) {
-      window.gameLoopRunning = true;
-      requestAnimationFrame(gameLoop);
-    }
-  } catch (error) {
-    console.error("Error initializing game:", error);
+  // Criação do background e da barra de status
+  background = new Background();
+  statusBar = new StatusBar();
+
+  //Variavel para controlar se o jogo já foi inicializado
+  gameInitialized = true;
+
+  // Começar o loop do jogo
+  if (!window.gameLoopRunning) {
+    window.gameLoopRunning = true;
+    requestAnimationFrame(gameLoop);
   }
 }
 
-// Ensure proper initialization order
+// função para inicializar o jogo de forma assíncrona
 function initializeGame() {
   setTimeout(() => {
     startGame();
   }, 100);
 }
 
-// Multiple event listeners to ensure initialization
+// Assim que o documento estiver totalmente carregado, inicializar o jogo
 document.addEventListener("DOMContentLoaded", initializeGame);
 
-// Handle window resize to fix canvas issues
+// Handler para redimensionar o canvas quando a janela for redimensionada
 window.addEventListener("resize", () => {
   if (typeof initCanvas === "function") {
     initCanvas();

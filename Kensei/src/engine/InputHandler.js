@@ -1,7 +1,9 @@
+// Variaveis globais para armazenar o estado das teclas
 const keys = {};
 const justPressed = {};
 const justReleased = {};
 
+// Event listener para o keydown e keyup
 window.addEventListener("keydown", (e) => {
   if (!keys[e.key]) {
     justPressed[e.key] = true;
@@ -13,8 +15,8 @@ window.addEventListener("keyup", (e) => {
   keys[e.key] = false;
   justReleased[e.key] = true;
 });
-
-// Call this at the end of each game frame to reset one-time press flags
+// Função que reseta o estado das teclas
+// e reseta para puder dar outros ataques
 function resetKeyPress() {
   for (const key in justPressed) {
     justPressed[key] = false;
