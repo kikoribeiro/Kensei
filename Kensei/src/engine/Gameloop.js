@@ -158,12 +158,28 @@ function initializeGame() {
   }, 100);
 }
 
-// Assim que o documento estiver totalmente carregado, inicializar o jogo
-document.addEventListener("DOMContentLoaded", initializeGame);
-
 // Handler para redimensionar o canvas quando a janela for redimensionada
 window.addEventListener("resize", () => {
   if (typeof initCanvas === "function") {
     initCanvas();
   }
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  const startScreen = document.getElementById("start-screen");
+
+  // Listen for spacebar to start the game
+  document.addEventListener("keydown", function onStartKey(e) {
+    if (e.code === "Space") {
+      e.preventDefault();
+      document.removeEventListener("keydown", onStartKey);
+
+      // Hide start screen
+      if (startScreen) startScreen.style.display = "none";
+
+      // Start game
+      startGame();
+    }
+  });
+});
+
