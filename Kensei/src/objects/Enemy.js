@@ -40,10 +40,6 @@ class Enemy extends Fighter {
 
   // Override update to add AI behavior
   update(keys = {}, justPressed = {}, opponent = null) {
-    console.log(
-      `Enemy update called with opponent: ${opponent?.name || "null"}`
-    );
-
     // Simulate AI inputs
     const aiKeys = this.getAIInputs(opponent);
     const aiJustPressed = this.getAIActions(opponent);

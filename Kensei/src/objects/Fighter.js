@@ -146,11 +146,6 @@ class Fighter {
   }
 
   initAnimationsFromJSON() {
-    if (!this.spriteData || !this.spriteData.frames) {
-      console.error("No sprite data available");
-      return;
-    }
-
     // Group frames by animation name
     const animationGroups = {};
 
@@ -264,12 +259,9 @@ class Fighter {
   setAnimation(name) {
     // Only change animation if it's different
     if (this.currentAnimation !== name && this.animations[name]) {
-      console.log(`🎯 ${this.name} switching to animation: ${name}`);
       this.currentAnimation = name;
       this.frameIndex = 0;
       this.frameTimer = 0;
-    } else if (!this.animations[name]) {
-      console.warn(`❌ ${this.name} tried to use missing animation: ${name}`);
     }
   }
 
@@ -602,7 +594,7 @@ class Fighter {
           return;
         }
         // Uppercut (could be special input like down+punch)
-        if (justPressed["z"] && keys["ArrowDown"]) {
+        if (justPressed["z"] && keys["ArrowLeft"]) {
           this.performAttack(FighterState.UPPERCUT);
           return;
         }
@@ -742,13 +734,6 @@ class Fighter {
   }
 
   updateFacing(opponent) {
-    if (!opponent) {
-      console.log(`${this.name} has no opponent to face`);
-      return;
-    }
-
-    console.log(`${this.name} at x:${this.x}, opponent at x:${opponent.x}`);
-
     const shouldFaceRight = opponent.x > this.x;
     const newDirection = shouldFaceRight
       ? FighterDirection.RIGHT
@@ -757,7 +742,6 @@ class Fighter {
     if (this.direction !== newDirection) {
       this.direction = newDirection;
       this.facing = shouldFaceRight ? "right" : "left";
-      console.log(`${this.name} turning to face ${this.facing}`);
     }
   }
 }

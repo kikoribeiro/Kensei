@@ -1,5 +1,6 @@
 import Fighter from "./Fighter.js";
 import { FighterDirection } from "../constants/fighter.js";
+import { canvas } from "../engine/Canvas.js";
 
 class Player extends Fighter {
   constructor(x, y, width, height, direction = FighterDirection.RIGHT) {
@@ -22,12 +23,11 @@ class Player extends Fighter {
 
   // Override update to add special move input
   update(keys, justPressed = {}, opponent = null) {
-    console.log(
-      `Player update called with opponent: ${opponent?.name || "null"}`
-    );
-
-    // Call parent update
+    // Call parent update FIRST
     super.update(keys, justPressed, opponent);
+
+    // FORCE boundary checking since Fighter's constrainToScreen isn't working
+    this.constrainToScreen();
 
     // Add special move input (only if not already attacking/jumping/crouching)
     if (!this.isAttacking && !this.isJumping && !this.isCrouching) {
@@ -36,6 +36,23 @@ class Player extends Fighter {
         this.performSpecialMove();
         return;
       }
+    }
+  }
+
+  // Override constrainToScreen to make sure it works
+  constrainToScreen() {
+    if (!canvas) return;
+
+    // Left boundary
+    if (this.x < 0) {
+      this.x = 0;
+      if (this.velocity) this.velocity.x = 0;
+    }
+
+    // Right boundary
+    if (this.x + this.width > canvas.width) {
+      this.x = canvas.width - this.width;
+      if (this.velocity) this.velocity.x = 0;
     }
   }
 
