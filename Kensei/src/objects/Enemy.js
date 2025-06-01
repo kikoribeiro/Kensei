@@ -1,18 +1,32 @@
 import Fighter from "./Fighter.js";
 import { FighterDirection } from "../constants/fighter.js";
 
+/**
+ * Classe Enemy que estende Fighter para criar inimigos com IA.
+ * Esta classe implementa uma IA básica que reage ao jogador,
+ * decide quando atacar, defender ou se mover, e tem diferentes
+ * níveis de dificuldade. Feito com IA.
+ *
+ */
 class Enemy extends Fighter {
-  constructor(x, y, width, height, direction = FighterDirection.LEFT) {
-    // Call parent constructor with all required parameters
+  constructor(
+    x,
+    y,
+    width,
+    height,
+    direction = FighterDirection.LEFT,
+    name = "enemy"
+  ) {
+    // Chamar o construtor pai com todos os parâmetros necessários
     super(
       x,
       y,
       width,
       height,
-      "./assets/spritesheets/spritesheetKen.png", // Use same sprite for now
-      "./assets/spritesheets/spritesheetKen.json", // Use same JSON for now
+      "./assets/spritesheets/spritesheetKen.png",
+      "./assets/spritesheets/spritesheetKen.json",
       direction,
-      "enemy"
+      name
     );
 
     // Add AI properties
@@ -55,24 +69,74 @@ class Enemy extends Fighter {
     this.player = player;
   }
 
+  updateAIState(distanceToPlayer) {
+    // Transições de estado baseadas na distância e vida
+    if (distanceToPlayer > this.aggroRange) {
+      this.aiState = "idle";
+    } else if (distanceToPlayer <= this.attackRange) {
+      // Alcance próximo - SEMPRE agressivo em hard
+      if (this.difficulty === "hard") {
+        this.aiState = "aggressive";
+      } else if (this.health < 30) {
+        this.aiState = "defensive";
+      } else {
+        this.aiState =
+          Math.random() < this.aggressiveness ? "aggressive" : "defensive";
+      }
+    } else {
+      // Alcance médio - aproximar-se
+      this.aiState = this.health > 30 ? "aggressive" : "defensive";
+    }
+  }
+
+  getAIActions(opponent) {
+    const aiJustPressed = {};
+
+    if (!opponent) return aiJustPressed;
+    if (this.difficulty === "test") return aiJustPressed;
+
+    const distanceToPlayer = Math.abs(this.x - opponent.x);
+
+    // Lógica de ataque (só não pode atacar se já está a atacar ou a ser atingido)
+    if (!this.isAttacking && !this.isHit && this.actionTimer <= 0) {
+      if (!this.isJumping && distanceToPlayer <= this.attackRange) {
+        const attackChance = this.aggressiveness;
+        if (Math.random() < attackChance) {
+          if (Math.random() < 0.6) {
+            aiJustPressed["z"] = true;
+          } else {
+            aiJustPressed["x"] = true;
+          }
+          this.aiState = "attacking";
+          this.actionTimer = this.reactionTime;
+        }
+      }
+    }
+
+    // Lógica de salto (pode saltar para reagir ao salto do jogador, mesmo que não ataque)
+    if (!this.isJumping && opponent.isJumping && Math.random() < 0.3) {
+      aiJustPressed["ArrowUp"] = true;
+      this.actionTimer = 20;
+    }
+
+    return aiJustPressed;
+  }
+
   getAIInputs(opponent) {
     const aiKeys = {};
 
-    // Use opponent instead of this.player
     if (!opponent) {
       console.log("Enemy has no opponent for AI inputs");
       return aiKeys;
     }
 
-    // If in test mode, don't do anything
     if (this.difficulty === "test") {
-      return aiKeys; // Return empty keys - no movement
+      return aiKeys;
     }
 
     const distanceToPlayer = Math.abs(this.x - opponent.x);
     const playerDirection = opponent.x > this.x ? 1 : -1;
 
-    // Update AI state based on distance
     this.updateAIState(distanceToPlayer);
 
     // Movement logic
@@ -95,71 +159,6 @@ class Enemy extends Fighter {
     }
 
     return aiKeys;
-  }
-
-  getAIActions(opponent) {
-    const aiJustPressed = {};
-
-    if (!opponent) {
-      console.log("Enemy has no opponent for AI actions");
-      return aiJustPressed;
-    }
-
-    // If in test mode, don't do any actions
-    if (this.difficulty === "test") {
-      return aiJustPressed; // Return empty actions - no attacks
-    }
-
-    const distanceToPlayer = Math.abs(this.x - opponent.x);
-
-    // Only perform actions if not already acting and timer is ready
-    if (this.actionTimer <= 0 && !this.isAttacking && !this.isHit) {
-      // Attack logic
-      if (
-        distanceToPlayer <= this.attackRange &&
-        this.aiState === "aggressive"
-      ) {
-        const attackRoll = Math.random();
-
-        if (attackRoll < this.aggressiveness) {
-          // Choose attack type
-          if (Math.random() < 0.6) {
-            aiJustPressed["z"] = true; // Punch
-          } else {
-            aiJustPressed["x"] = true; // Kick
-          }
-
-          this.aiState = "attacking";
-          this.actionTimer = this.nextActionDelay;
-        }
-      }
-
-      // Jump logic (random or if player is jumping)
-      if (opponent.isJumping && Math.random() < 0.4) {
-        aiJustPressed["ArrowUp"] = true;
-        this.actionTimer = 30;
-      }
-    }
-
-    return aiJustPressed;
-  }
-
-  updateAIState(distanceToPlayer) {
-    // State transitions based on distance and health
-    if (distanceToPlayer > this.aggroRange) {
-      this.aiState = "idle";
-    } else if (distanceToPlayer <= this.attackRange) {
-      // Close range - attack or defend based on health and aggressiveness
-      if (this.health < 30) {
-        this.aiState = "defensive";
-      } else {
-        this.aiState =
-          Math.random() < this.aggressiveness ? "aggressive" : "defensive";
-      }
-    } else {
-      // Medium range - approach or circle
-      this.aiState = this.health > 50 ? "aggressive" : "defensive";
-    }
   }
 
   handleAggressiveMovement(aiKeys, distanceToPlayer, playerDirection) {
@@ -209,7 +208,6 @@ class Enemy extends Fighter {
     this.moveTimer++;
 
     if (this.moveTimer > this.maxMoveTime || this.moveDirection === 0) {
-      // Choose new movement direction
       const roll = Math.random();
       if (roll < 0.3) {
         this.moveDirection = -1; // Left
@@ -247,28 +245,35 @@ class Enemy extends Fighter {
 
     switch (difficulty) {
       case "test":
-        // Test mode - enemy just stands there
         this.aggressiveness = 0;
         this.reactionTime = 999;
         this.nextActionDelay = 999;
         this.aiState = "idle";
         break;
       case "easy":
-        this.aggressiveness = 0.2;
+        this.aggressiveness = 0.3;
         this.reactionTime = 30;
         this.nextActionDelay = 90;
+        this.attackRange = 60;
         break;
       case "medium":
-        this.aggressiveness = 0.4;
-        this.reactionTime = 15;
+        this.aggressiveness = 0.5;
+        this.reactionTime = 20;
         this.nextActionDelay = 60;
+        this.attackRange = 70;
         break;
       case "hard":
-        this.aggressiveness = 0.6;
-        this.reactionTime = 5;
-        this.nextActionDelay = 30;
+        this.aggressiveness = 0.8; // MUITO agressivo
+        this.reactionTime = 5; // Reação MUITO rápida
+        this.nextActionDelay = 20; // Ataques frequentes
+        this.attackRange = 80; // Alcance maior
         break;
     }
+
+    console.log(`Enemy dificuldade definida para: ${difficulty}`);
+    console.log(
+      `Agressividade: ${this.aggressiveness}, Range: ${this.attackRange}`
+    );
   }
 
   // Override takeHit to add AI reaction

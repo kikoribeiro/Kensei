@@ -1,12 +1,12 @@
 window.DEBUG_MODE = true;
 //imports da pasta dos objetos
-import Player from "../objects/player.js";
+import Player from "../objects/Player.js";
 import Background from "../objects/Background.js";
 import StatusBar from "../objects/StatusBar.js";
 import Enemy from "../objects/Enemy.js";
 
 //input handler
-import { keys, justPressed,resetKeyPress } from "./InputHandler.js";
+import { keys, justPressed, resetKeyPress } from "./InputHandler.js";
 //canvas
 import { canvas, ctx, clearCanvas, initCanvas } from "./Canvas.js";
 //constantes
@@ -19,12 +19,12 @@ let background;
 let statusBar;
 let gameInitialized = false;
 let roundOver = false;
+let gameEnded = false; // Nova variável para controlar se o jogo terminou
+let winner = null; // Armazenar o vencedor
 
 // Controlo de FPS para manter 60 FPS constantemente
 const FPS = 60;
 const frameTime = 1000 / FPS;
-// Variável para armazenar o tempo do último frame para calcular deltaTime
-// deltaTime é o tempo entre frames
 let lastFrameTime = 0;
 
 // Loop principal do jogo
@@ -32,8 +32,6 @@ export function gameLoop(timestamp) {
   // Calcular deltaTime
   const deltaTime = timestamp - lastFrameTime;
 
-  // Só atualizar o jogo se o deltaTime for maior ou igual ao frameTime
-  // Isto garante que o jogo não atualize mais do que 60 vezes por segundo(60FPS)
   if (deltaTime >= frameTime) {
     lastFrameTime = timestamp - (deltaTime % frameTime);
 
@@ -45,39 +43,41 @@ export function gameLoop(timestamp) {
     }
 
     if (gameInitialized && background && player) {
-      // Atualizar players
-      player.update(keys, justPressed, player2);
-      player2.update({}, {}, player);
+      // Se o jogo não terminou, atualizar normalmente
+      if (!gameEnded) {
+        // Atualizar players
+        player.update(keys, justPressed, player2);
+        player2.update({}, {}, player);
 
-      // Verificação de colisão de pushbox entre Fighters
-      if (player && player2) {
-        player.resolvePushboxCollision(player2);
-      }
-
-      // Atualização do contador de tempo
-      if (statusBar) {
-        statusBar.updateTimer();
-        // Atualização da barra de vida dos Fighters
-        statusBar.updateFromFighters(player, player2);
-      }
-
-      // Verificação de colisão entre Fighters e de dano
-      if (player.checkCollision(player2)) {
-        if (!player2.isHit) {
-          // Cada golpe causa 10 de dano
-          player2.takeHit(10);
-          console.log(`Player2 took hit, health now: ${player2.currentHealth}`);
+        // Verificação de colisão de pushbox entre Fighters
+        if (player && player2) {
+          player.resolvePushboxCollision(player2);
         }
-      }
-      //Mesma situação para o player1
-      if (player2.checkCollision(player)) {
-        if (!player.isHit) {
-          player.takeHit(10);
-          console.log(`Player1 took hit, health now: ${player.currentHealth}`);
+
+        // Atualização do contador de tempo
+        if (statusBar) {
+          statusBar.updateTimer();
+          statusBar.updateFromFighters(player, player2);
         }
+
+        // Verificação de colisão entre Fighters e de dano
+        if (player.checkCollision(player2)) {
+          if (!player2.isHit) {
+            player2.takeHit(10);
+          }
+        }
+
+        if (player2.checkCollision(player)) {
+          if (!player.isHit) {
+            player.takeHit(10);
+          }
+        }
+
+        // Verificar condições de fim de jogo
+        checkGameEnd();
       }
 
-      // Desenhar o Background, Fighters e a statusBar
+      // Desenhar sempre (mesmo quando o jogo terminou)
       background.update();
       background.draw(ctx);
       player.draw(ctx);
@@ -88,13 +88,174 @@ export function gameLoop(timestamp) {
       if (statusBar) {
         statusBar.draw();
       }
+
+      // Se o jogo terminou, desenhar mensagem de vitória
+      if (gameEnded && winner) {
+        drawVictoryMessage();
+      }
+    }
+    resetKeyPress();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// Função para verificar se o jogo terminou
+function checkGameEnd() {
+  if (player.isDead || player2.isDead || statusBar.isTimeUp()) {
+    endGame();
+  }
+}
+
+// Função para terminar o jogo
+function endGame() {
+  if (gameEnded) return; // Evitar chamar múltiplas vezes
+
+  gameEnded = true;
+
+  // Determinar vencedor
+  if (player.isDead && !player2.isDead) {
+    winner = "ENEMY";
+    // Player 2 (Enemy) faz animação de vitória
+    player2.setAnimation("victory");
+    // Player 1 faz animação de derrota
+    player.setAnimation("dead");
+  } else if (player2.isDead && !player.isDead) {
+    winner = "RYU";
+    // Player 1 faz animação de vitória
+    player.setAnimation("victory");
+    // Player 2 faz animação de derrota
+    player2.setAnimation("dead");
+  } else if (statusBar.isTimeUp()) {
+    // Vence quem tem mais vida
+    if (player.health > player2.health) {
+      winner = "RYU";
+      player.setAnimation("victory");
+      player2.setAnimation("dead");
+    } else if (player2.health > player.health) {
+      winner = "RYU";
+      player2.setAnimation("victory");
+      player.setAnimation("dead");
+    } else {
+      winner = "EMPATE";
+      // Ambos fazem animação stance em caso de empate
+      player.setAnimation("stance");
+      player2.setAnimation("stance");
     }
   }
 
-  resetKeyPress();
-  // Atualizar o loop do jogo
-  // Usar requestAnimationFrame para manter o loop
-  requestAnimationFrame(gameLoop);
+  console.log(`Vencedor: ${winner}`);
+
+  // Opcional: Reiniciar jogo após alguns segundos
+  setTimeout(() => {
+    showRestartMessage();
+  }, 3000);
+}
+
+// Função para desenhar a mensagem de vitória
+function drawVictoryMessage() {
+  ctx.save();
+
+  // Fundo semi-transparente
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Configurar texto principal
+  ctx.font = "bold 80px Arial";
+  ctx.fillStyle = "#FFD700"; // Dourado
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = 4;
+  ctx.textAlign = "center";
+
+  // Sombra do texto
+  ctx.shadowColor = "#000000";
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetX = 5;
+  ctx.shadowOffsetY = 5;
+
+  // Desenhar texto principal
+  const mainText = `${winner} WINS!`;
+  const textY = canvas.height / 2 - 50;
+
+  // Contorno preto
+  ctx.strokeText(mainText, canvas.width / 2, textY);
+  // Preenchimento dourado
+  ctx.fillText(mainText, canvas.width / 2, textY);
+
+  // Texto secundário
+  ctx.font = "bold 30px Arial";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = 2;
+  ctx.shadowBlur = 5;
+
+  ctx.strokeText("VICTORY!", canvas.width / 2, textY + 80);
+  ctx.fillText("VICTORY!", canvas.width / 2, textY + 80);
+
+  ctx.restore();
+}
+
+// Função para mostrar mensagem de reinício
+function showRestartMessage() {
+  ctx.save();
+
+  ctx.font = "bold 24px Arial";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = 2;
+  ctx.textAlign = "center";
+  ctx.shadowColor = "#000000";
+  ctx.shadowBlur = 5;
+
+  const restartText = "Pressiona ESPAÇO para jogar novamente";
+  const restartY = canvas.height / 2 + 150;
+
+  ctx.strokeText(restartText, canvas.width / 2, restartY);
+  ctx.fillText(restartText, canvas.width / 2, restartY);
+
+  ctx.restore();
+
+  // Adicionar listener para reiniciar
+  document.addEventListener("keydown", handleRestart);
+}
+
+// Função para reiniciar o jogo
+function handleRestart(e) {
+  if (e.code === "Space") {
+    e.preventDefault();
+    document.removeEventListener("keydown", handleRestart);
+
+    // Reiniciar variáveis do jogo
+    gameEnded = false;
+    winner = null;
+    roundOver = false;
+
+    // Reiniciar jogadores
+    if (player) {
+      player.health = 100;
+      player.currentHealth = 100;
+      player.isDead = false;
+      player.isHit = false;
+      player.isAttacking = false;
+      player.setAnimation("stance");
+    }
+
+    if (player2) {
+      player2.health = 100;
+      player2.currentHealth = 100;
+      player2.isDead = false;
+      player2.isHit = false;
+      player2.isAttacking = false;
+      player2.setAnimation("stance");
+    }
+
+    // Reiniciar timer
+    if (statusBar) {
+      statusBar.resetTimer();
+    }
+
+    console.log("Jogo reiniciado!");
+  }
 }
 
 // Iniciar o jogo
@@ -105,16 +266,12 @@ export function startGame() {
   }
 
   // Variáveis para puder conseguir criar os jogadores dinamicamente
-  // dependendo do tamanho do canvas(ou seja resolução do ecrã do utilizador)
   const playerWidth = 160;
   const playerHeight = 225;
   const groundOffset = 250;
 
-  // estas constantes calculam a posição dos jogadores
-  // dependendo do tamanho do canvas
-  const player1X = canvas.width * 0.2; // 20% da margem esquerda
-  const player2X = canvas.width * 0.8 - playerWidth; // 80% da esquerda menos a largura do jogador
-  // Posição Y dos jogadores, para estarem no chão
+  const player1X = canvas.width * 0.2;
+  const player2X = canvas.width * 0.8 - playerWidth;
   const playerY = canvas.height - groundOffset;
 
   // Criação dos players(Fighters)
@@ -134,17 +291,13 @@ export function startGame() {
     FighterDirection.LEFT
   );
 
-  // Configuarção do player2(Enemy), para a sua dificuldade de jogo
-  player2.setDifficulty("test");
+  player2.setDifficulty("hard");
 
-  // Criação do background e da barra de status
   background = new Background();
   statusBar = new StatusBar();
 
-  //Variavel para controlar se o jogo já foi inicializado
   gameInitialized = true;
 
-  // Começar o loop do jogo
   if (!window.gameLoopRunning) {
     window.gameLoopRunning = true;
     requestAnimationFrame(gameLoop);
@@ -182,4 +335,3 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-

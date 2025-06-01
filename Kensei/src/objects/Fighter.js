@@ -1,6 +1,12 @@
 import { ctx } from "../engine/Canvas.js";
 import { FighterDirection, FighterState } from "../constants/fighter.js";
 
+/**
+ * Classe que representa um Fighter no jogo.
+ * Esta classe gere as propriedades do Fighter, animações, física,
+ * e interações com outros Fighteres.
+ * @class Fighter
+ **/
 class Fighter {
   constructor(
     x,
@@ -12,7 +18,7 @@ class Fighter {
     direction = FighterDirection.RIGHT,
     name = "fighter"
   ) {
-    // Position and dimensions
+    // Posição e dimensões do Fighter
     this.x = x;
     this.y = y;
     this.width = width;
@@ -20,57 +26,92 @@ class Fighter {
     this.direction = direction;
     this.name = name;
 
-    // Visual properties
+    // Propriedades visuais
     this.facing = direction === FighterDirection.RIGHT ? "right" : "left";
     this.globalScale = null;
 
-    // Physics properties
+    // Propriedades de física e movimento
     this.velocityX = 150 * direction;
     this.velocityY = 0;
-    this.speed = 5;
-    this.jumpSpeed = -18;
-    this.gravity = 0.6;
-    this.groundY = y;
+    this.speed = 5; // Velocidade de movimento horizontal
+    this.jumpSpeed = -18; // Velocidade inicial do salto
+    this.gravity = 0.6; // Força da gravidade
+    this.groundY = y; // Posição Y do chão
 
-    // State flags
-    this.isJumping = false;
-    this.isCrouching = false;
-    this.isAttacking = false;
-    this.isBlocking = false;
-    this.isHit = false;
-    this.isDead = false;
+    // Estados do Fighter
+    this.isJumping = false; // Se está a saltar
+    this.isCrouching = false; // Se está agachado
+    this.isAttacking = false; // Se está a atacar
+    this.isBlocking = false; // Se está a bloquear
+    this.isHit = false; // Se foi atingido
+    this.isDead = false; // Se está morto
 
-    // Attack properties
-    this.attackType = null;
+    // Propriedades de ataque
+    this.attackType = null; // Tipo de ataque atual
     this.attackFrameCount = 0;
     this.attackBox = { x: 0, y: 0, width: 0, height: 0 };
 
-    // Health and damage
+    // Vida
     this.health = 100;
+    this.currentHealth = 100;
 
-    // Animation properties
+    // Propriedades de animação
     this.currentAnimation = "stance";
     this.frameIndex = 0;
     this.frameTimer = 0;
-    this.frameDelay = 6; // Single animation speed for all animations
+    this.frameDelay = 6; // Velocidade padrão para animações lentas (stance, walk)
     this.animationsReady = false;
     this.animations = {};
     this.spriteData = null;
 
-    // Add animations that should hold their last frame
-    this.holdLastFrameAnimations = ["crouch", "jump", "jump_front"];
+    // NOVO: Velocidades específicas para diferentes tipos de animação
+    this.animationSpeeds = {
+      // Animações de ataque - RÁPIDAS
+      punch: 3,
+      kick: 3,
+      crouch_punch: 3,
+      crouch_kick: 3,
+      uppercut: 4,
+      special_move: 4,
 
-    // Pushbox properties
+      // Animações de movimento - NORMAIS
+      stance: 8,
+      walk_forward: 6,
+      walk_backwards: 6,
+      crouch: 6,
+
+      // Animações de salto - MÉDIAS
+      jump: 4,
+      jump_front: 4,
+
+      // Animações de reação - RÁPIDAS
+      hit: 3,
+      crouch_hit: 3,
+
+      // Animações especiais - LENTAS
+      victory: 8,
+      dead: 6,
+    };
+    // Animações que devem manter o último frame
+    this.holdLastFrameAnimations = [
+      "crouch",
+      "jump",
+      "jump_front",
+      "victory",
+      "dead",
+    ];
+
+    // Propriedades da pushbox
     this.pushBox = {
-      x: this.width * 0.2, // Offset from fighter's x
-      y: this.height * 0.1, // Offset from fighter's y
-      width: this.width * 0.6, // Pushbox width
-      height: this.height * 0.8, // Pushbox height
+      x: this.width * 0.2,
+      y: this.height * 0.1,
+      width: this.width * 0.6, // Largura da pushbox
+      height: this.height * 0.8, // Altura da pushbox
     };
 
-    this.pushForce = 2; // How strong the push is
+    this.pushForce = 2; // Força do empurrão
 
-    // Hurtbox properties (where fighter can be hit)
+    // Propriedades da hurtbox (onde o Fighter pode ser atingido)
     this.hurtBox = {
       x: this.width * 0.25,
       y: this.height * 0.1,
@@ -78,7 +119,7 @@ class Fighter {
       height: this.height * 0.8,
     };
 
-    // Attack hitbox configurations for different attacks
+    // Configurações das hitboxes para diferentes ataques
     this.hitboxConfigs = {
       punch: {
         x: this.width * 0.6,
@@ -90,7 +131,7 @@ class Fighter {
         x: this.width * 0.7,
         y: this.height * 0.01,
         width: this.width * 0.7,
-        height: this.width * 0.3,
+        height: this.width * 0.5,
       },
       crouch_punch: {
         x: this.width * 0.8,
@@ -118,35 +159,37 @@ class Fighter {
       },
     };
 
-    // Load sprite sheet and JSON data
+    // Carregar spritesheet e dados JSON
     this.loadSpritesheet(spritesheetPath, jsonPath);
   }
 
+  // Método para determinar o estado baseado na velocidade e direção
   changeState = () =>
     this.velocity * this.direction < 0 ? "walk-backwards" : "walk_forward";
 
+  // Carregamento assíncrono da spritesheet e dados JSON
   async loadSpritesheet(spritesheetPath, jsonPath) {
     try {
-      // Load JSON data first
+      // Carregar dados JSON primeiro
       const response = await fetch(jsonPath);
       this.spriteData = await response.json();
 
-      // Load sprite image
+      // Carregar imagem da sprite
       this.sprite = new Image();
       this.sprite.onload = () => {
-        console.log(`Loaded sprite for ${this.name}`);
         this.initAnimationsFromJSON();
         this.calculateGlobalScale();
         this.animationsReady = true;
       };
       this.sprite.src = spritesheetPath;
     } catch (error) {
-      console.error(`Failed to load spritesheet data for ${this.name}:`, error);
+      console.error(`Falha ao carregar spritesheet para ${this.name}:`, error);
     }
   }
 
+  // Inicializar animações a partir dos dados JSON
   initAnimationsFromJSON() {
-    // Group frames by animation name
+    // Agrupar frames por nome da animação
     const animationGroups = {};
 
     for (const frameName in this.spriteData.frames) {
@@ -157,7 +200,7 @@ class Fighter {
         animationGroups[animationName] = [];
       }
 
-      // Convert JSON frame data to our format using pivot from JSON
+      // Converter dados do frame JSON para o formato usando pivot do JSON
       const frame = {
         x: frameData.frame.x,
         y: frameData.frame.y,
@@ -174,11 +217,11 @@ class Fighter {
       });
     }
 
-    // Sort and convert to final format
+    // Ordenar e converter para formato final
     for (const animName in animationGroups) {
-      // Sort by numeric value instead of alphabetically
+      // Ordenar por valor numérico em vez de alfabeticamente
       animationGroups[animName].sort((a, b) => {
-        // Extract the number from the frame name
+        // Extrair o número do nome do frame
         const getFrameNumber = (frameName) => {
           const match = frameName.match(/-(\d+)\.png$/);
           return match ? parseInt(match[1], 10) : 0;
@@ -187,7 +230,7 @@ class Fighter {
         const numA = getFrameNumber(a.frameName);
         const numB = getFrameNumber(b.frameName);
 
-        return numA - numB; // Numeric sort instead of alphabetical
+        return numA - numB; // Ordenação numérica em vez de alfabética
       });
 
       this.animations[animName] = animationGroups[animName].map(
@@ -198,15 +241,17 @@ class Fighter {
     this.mapAnimationNames();
   }
 
+  // Extrair nome da animação do nome do ficheiro
   extractAnimationName(frameName) {
-    // Remove file extension
+    // Remover extensão do ficheiro
     const nameWithoutExt = frameName.replace(/\.(png|jpg|jpeg)$/i, "");
     const animationName = nameWithoutExt.replace(/-\d+$/, "");
     return animationName.toLowerCase();
   }
 
+  // Mapear nomes das animações do JSON para os nomes esperados no jogo
   mapAnimationNames() {
-    // Map the exact JSON animation names to our expected game names
+    // Mapear os nomes exatos das animações JSON para os nomes esperados no jogo
     const nameMapping = {
       stance: "stance",
       "walk-forward": "walk_forward",
@@ -239,6 +284,7 @@ class Fighter {
     this.animations = newAnimations;
   }
 
+  // Calcular escala global para manter proporções consistentes
   calculateGlobalScale() {
     let maxWidth = 0;
     let maxHeight = 0;
@@ -256,19 +302,27 @@ class Fighter {
     }
   }
 
+  // Método para obter a velocidade atual da animação
+  getCurrentAnimationSpeed() {
+    return this.animationSpeeds[this.currentAnimation] || this.frameDelay;
+  }
+
+  // Definir animação atual (apenas se for diferente)
   setAnimation(name) {
-    // Only change animation if it's different
+    // Só mudar animação se for diferente
     if (this.currentAnimation !== name && this.animations[name]) {
       this.currentAnimation = name;
       this.frameIndex = 0;
-      this.frameTimer = 0;
+      this.frameTimer = 0; // SEMPRE resetar timer ao mudar animação
     }
   }
 
+  // Desenhar o Fighter no canvas
   draw(ctx) {
-    // During loading phase, draw a placeholder
+    // Durante a fase de carregamento, desenhar um placeholder
     if (
       !this.animationsReady ||
+      !this.sprite ||
       !this.sprite.complete ||
       !this.animations ||
       Object.keys(this.animations).length === 0
@@ -278,30 +332,30 @@ class Fighter {
       return;
     }
 
-    // Get current animation frames
+    // Obter frames da animação atual
     const frames = this.animations[this.currentAnimation];
     if (!frames?.length) return;
 
-    // SAFE FRAME INDEX - Make sure we never go out of bounds
+    // Garantir que nunca saímos dos limites
     if (this.frameIndex >= frames.length) {
       this.frameIndex = 0;
     }
 
-    // Get current frame data
+    // Obter dados do frame atual
     const frame = frames[this.frameIndex];
 
-    // Use the consistent scale for all animations
+    // Usar escala consistente para todas as animações
     const scale = this.globalScale || 1;
 
-    // Save context for transformations
+    // Guardar contexto para transformações
     ctx.save();
 
-    // Use direction constant for sprite flipping
+    // Usar constante de direção para inversão da sprite
     const scaleX = this.direction === FighterDirection.RIGHT ? 1 : -1;
 
     ctx.scale(scaleX, 1);
 
-    // Adjust x position when flipped
+    // Ajustar posição x quando invertido
     const drawX =
       this.direction === FighterDirection.RIGHT
         ? this.x + this.width / 2 - frame.anchorX * scale
@@ -321,97 +375,100 @@ class Fighter {
 
     ctx.restore();
 
-    // Update animation frame using single frameDelay
+    // Atualizar frame da animação usando velocidade específica
     this.frameTimer++;
 
-    if (this.frameTimer >= this.frameDelay) {
+    // USAR VELOCIDADE ESPECÍFICA PARA CADA ANIMAÇÃO
+    const currentSpeed = this.getCurrentAnimationSpeed();
+
+    if (this.frameTimer >= currentSpeed) {
       this.frameTimer = 0;
 
-      // Check if this is a hold-last-frame animation that's at its end
+      // Verificar se esta é uma animação que mantém o último frame e está no fim
       const isHoldAnimation = this.holdLastFrameAnimations.includes(
         this.currentAnimation
       );
       const isLastFrame = this.frameIndex === frames.length - 1;
 
-      // Only increment if it's not a hold animation at its last frame
+      // Só incrementar se não for uma animação de hold no último frame
       if (!(isHoldAnimation && isLastFrame)) {
         this.frameIndex = (this.frameIndex + 1) % frames.length;
       }
     }
-
-    // Optional: Draw hitbox for debugging
-    if (window.DEBUG_MODE) {
-      this.drawHitboxes(ctx); // Remove the drawPushbox call - it's already included in drawHitboxes
-    }
+    //NO FINAL RETIRAWFEBNIJFWEBIJWEI
+    // if (window.DEBUG_MODE) {
+    //   this.drawHitboxes(ctx);
+    // }
   }
 
-  drawHitboxes(ctx) {
-    // Draw character hurtbox (where they can be hit)
-    const hurtbox = this.getDynamicHurtbox();
-    ctx.strokeStyle = "blue";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(hurtbox.x, hurtbox.y, hurtbox.width, hurtbox.height);
+  // // Desenhar hitboxes para debug
+  // drawHitboxes(ctx) {
+  //   // Desenhar hurtbox do personagem (onde podem ser atingidos)
+  //   const hurtbox = this.getDynamicHurtbox();
+  //   ctx.strokeStyle = "blue";
+  //   ctx.lineWidth = 2;
+  //   ctx.strokeRect(hurtbox.x, hurtbox.y, hurtbox.width, hurtbox.height);
 
-    // Label hurtbox
-    ctx.fillStyle = "blue";
-    ctx.font = "10px Arial";
-    ctx.fillText("HURT", hurtbox.x, hurtbox.y - 5);
+  //   // Etiqueta da hurtbox
+  //   ctx.fillStyle = "blue";
+  //   ctx.font = "10px Arial";
+  //   ctx.fillText("DANO", hurtbox.x, hurtbox.y - 5);
 
-    // Draw attack hitbox if attacking
-    const hitbox = this.getDynamicHitbox();
-    if (hitbox) {
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
+  //   // Desenhar hitbox de ataque se estiver a atacar
+  //   const hitbox = this.getDynamicHitbox();
+  //   if (hitbox) {
+  //     ctx.strokeStyle = "red";
+  //     ctx.lineWidth = 3;
+  //     ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
 
-      // Label hitbox
-      ctx.fillStyle = "red";
-      ctx.font = "10px Arial";
-      ctx.fillText(
-        `HIT-${this.attackType.toUpperCase()}`,
-        hitbox.x,
-        hitbox.y - 5
-      );
-    }
+  //     // Etiqueta da hitbox
+  //     ctx.fillStyle = "red";
+  //     ctx.font = "10px Arial";
+  //     ctx.fillText(
+  //       `ATAQUE-${this.attackType.toUpperCase()}`,
+  //       hitbox.x,
+  //       hitbox.y - 5
+  //     );
+  //   }
 
-    // Draw pushbox
-    const pushbox = {
-      x: this.x + this.pushBox.x,
-      y: this.y + this.pushBox.y,
-      width: this.pushBox.width,
-      height: this.pushBox.height,
-    };
+  //   // Desenhar pushbox
+  //   const pushbox = {
+  //     x: this.x + this.pushBox.x,
+  //     y: this.y + this.pushBox.y,
+  //     width: this.pushBox.width,
+  //     height: this.pushBox.height,
+  //   };
 
-    ctx.strokeStyle = "green";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(pushbox.x, pushbox.y, pushbox.width, pushbox.height);
+  //   ctx.strokeStyle = "green";
+  //   ctx.lineWidth = 2;
+  //   ctx.strokeRect(pushbox.x, pushbox.y, pushbox.width, pushbox.height);
 
-    // Label pushbox
-    ctx.fillStyle = "green";
-    ctx.font = "10px Arial";
-    ctx.fillText("PUSH", pushbox.x, pushbox.y - 5);
-  }
+  //   // Etiqueta da pushbox
+  //   ctx.fillStyle = "green";
+  //   ctx.font = "10px Arial";
+  //   ctx.fillText("EMPURRAR", pushbox.x, pushbox.y - 5);
+  // }
 
-  // Dynamic hurtbox based on current state
+  // Hurtbox dinâmica baseada no estado atual
   getDynamicHurtbox() {
     let hurtbox = { ...this.hurtBox };
 
     if (this.isCrouching) {
-      // Crouching - smaller, lower hurtbox
+      // Agachado - hurtbox menor e mais baixa
       hurtbox.y = this.height * 0.4;
       hurtbox.height = this.height * 0.5;
       hurtbox.width = this.width * 0.6;
     } else if (this.isJumping) {
-      // Jumping - adjust based on jump height
+      // A saltar - ajustar baseado na altura do salto
       const jumpProgress = Math.abs(this.velocityY) / Math.abs(this.jumpSpeed);
 
       if (this.currentAnimation === FighterState.JUMP_FRONT) {
-        // Forward jump - extend horizontally
+        // Salto para a frente - estender horizontalmente
         hurtbox.width = this.width * 0.7;
         hurtbox.x = this.width * 0.2;
       }
 
-      // Slightly smaller hurtbox when airborne
+      // Hurtbox ligeiramente menor quando no ar
       hurtbox.width *= 0.9;
       hurtbox.height *= 0.95;
     }
@@ -424,7 +481,7 @@ class Fighter {
     };
   }
 
-  // Dynamic hitbox based on current attack
+  // Hitbox dinâmica baseada no ataque atual
   getDynamicHitbox() {
     if (!this.isAttacking || !this.attackType) {
       return null;
@@ -432,11 +489,11 @@ class Fighter {
 
     let hitboxConfig = this.hitboxConfigs[this.attackType];
     if (!hitboxConfig) {
-      // Fallback to default
+      // Fallback para padrão
       hitboxConfig = this.hitboxConfigs.punch;
     }
 
-    // Adjust hitbox based on direction
+    // Ajustar hitbox baseada na direção
     const hitboxX =
       this.direction === FighterDirection.RIGHT
         ? this.x + hitboxConfig.x
@@ -450,21 +507,21 @@ class Fighter {
     };
   }
 
+  // Método principal de atualização do Fighter
   update(keys, justPressed = {}, opponent = null) {
-    // Store old position in case we need to revert
+    // Guardar posição antiga caso precisemos de reverter
     const oldX = this.x;
     const oldY = this.y;
 
-    // Use constants instead of magic strings
     let animation = FighterState.STANCE;
     this.moving = false;
 
-    // Update facing to always look at opponent
+    // Atualizar orientação para sempre olhar para o oponente
     if (opponent) {
       this.updateFacing(opponent);
     }
 
-    // Check if we're in the middle of an attack animation
+    // Verificar se estamos no meio de uma animação de ataque
     if (this.isAttacking) {
       animation = this.attackType;
 
@@ -480,7 +537,7 @@ class Fighter {
       }
     }
 
-    // Handling being hit
+    // Quando o Fighter é atingido, usar animação de hit
     if (this.isHit) {
       animation = this.isCrouching ? "crouch_hit" : "hit";
       const hitFrames = this.animations[animation];
@@ -493,8 +550,9 @@ class Fighter {
       }
     }
 
-    // Crouching
-    if (keys["ArrowDown"]) {
+    // Agachar - CORRIGIR: Usar as teclas mapeadas
+    if (keys["down"] || keys["ArrowDown"]) {
+      // Aceitar ambas
       this.isCrouching = true;
       animation = FighterState.CROUCH;
       this.moving = false;
@@ -502,43 +560,42 @@ class Fighter {
       this.isCrouching = false;
     }
 
-    // Movement and jump logic
+    // Lógica de movimento - CORRIGIR: Usar as teclas mapeadas
     let isMovingForward = false;
 
     if (!this.isCrouching) {
-      if (keys["ArrowRight"]) {
+      if (keys["right"] || keys["ArrowRight"]) {
+        // Aceitar ambas
         this.x += this.speed;
         this.moving = true;
         animation =
           this.direction === FighterDirection.RIGHT
             ? FighterState.WALK_FORWARD
             : FighterState.WALK_BACKWARDS;
-
         isMovingForward = this.direction === FighterDirection.RIGHT;
       }
 
-      if (keys["ArrowLeft"]) {
+      if (keys["left"] || keys["ArrowLeft"]) {
+        // Aceitar ambas
         this.x -= this.speed;
         this.moving = true;
         animation =
           this.direction === FighterDirection.LEFT
             ? FighterState.WALK_FORWARD
             : FighterState.WALK_BACKWARDS;
-
         isMovingForward = this.direction === FighterDirection.LEFT;
       }
     }
 
-    // Jump logic - check if moving forward when jumping
-    if (keys["ArrowUp"]) {
+    // Lógica de salto - CORRIGIR: Usar as teclas mapeadas
+    if (keys["up"] || keys["ArrowUp"]) {
+      // Aceitar ambas
       if (!this.isJumping) {
         this.isJumping = true;
         this.velocityY = this.jumpSpeed;
 
-        // If moving forward while jumping, use jump_front animation
         if (isMovingForward) {
           animation = FighterState.JUMP_FRONT;
-          // Add extra forward momentum during jump_front
           if (this.direction === FighterDirection.RIGHT) {
             this.x += this.speed * 1.5;
           } else {
@@ -550,12 +607,11 @@ class Fighter {
       }
     }
 
-    // Apply gravity and jumping physics
+    // Aplicar gravidade e física do salto
     if (this.isJumping) {
       this.y += this.velocityY;
       this.velocityY += this.gravity;
 
-      // Don't override jump animations
       if (
         animation !== FighterState.JUMP_FRONT &&
         animation !== FighterState.JUMP
@@ -563,7 +619,7 @@ class Fighter {
         animation = this.currentAnimation;
       }
 
-      // Check if we've landed
+      // Verificar se aterrou
       if (this.y >= this.groundY) {
         this.y = this.groundY;
         this.isJumping = false;
@@ -571,10 +627,10 @@ class Fighter {
       }
     }
 
-    // Process attacks - including crouch attacks
+    // Processar ataques - incluindo ataques agachado
     if (!this.isAttacking && !this.isJumping) {
       if (this.isCrouching) {
-        // Crouch attacks
+        // Ataques agachado
         if (justPressed["z"]) {
           this.performAttack(FighterState.CROUCH_PUNCH);
           return;
@@ -584,7 +640,7 @@ class Fighter {
           return;
         }
       } else {
-        // Standing attacks
+        // Ataques em pé
         if (justPressed["z"]) {
           this.performAttack(FighterState.PUNCH);
           return;
@@ -593,37 +649,45 @@ class Fighter {
           this.performAttack(FighterState.KICK);
           return;
         }
-        // Uppercut (could be special input like down+punch)
-        if (justPressed["z"] && keys["ArrowLeft"]) {
-          this.performAttack(FighterState.UPPERCUT);
-          return;
-        }
+        // // Uppercut (poderia ser entrada especial como baixo+soco)
+        // if (justPressed["z"] && keys["ArrowLeft"]) {
+        //   this.performAttack(FighterState.UPPERCUT);
+        //   return;
+        // }
       }
     }
 
-    // Handle pushbox collisions after movement
+    // Lidar com colisões de pushbox após movimento
     if (opponent) {
       this.resolvePushboxCollision(opponent);
     }
 
-    // Set the current animation based on state
+    // Definir a animação atual baseada no estado
     this.setAnimation(animation);
   }
 
+  // Executar um ataque específico
   performAttack(attackType) {
+    console.log(`${this.name} executa ${attackType}!`);
     this.isAttacking = true;
     this.attackFrameCount = 0;
     this.attackType = attackType;
 
-    // Set attack box from config
+    // Definir caixa de ataque a partir da configuração
     const config = this.hitboxConfigs[attackType] || this.hitboxConfigs.punch;
     this.attackBox = { ...config };
+
+    // IMPORTANTE: Resetar timer para resposta imediata
+    this.frameTimer = 0;
+    this.frameIndex = 0;
 
     this.setAnimation(this.attackType);
   }
 
+  // Receber dano
   takeHit(damage) {
     this.health = Math.max(0, this.health - damage);
+    this.currentHealth = this.health; // Sincronizar currentHealth
     this.isHit = true;
     this.frameIndex = 0;
     this.frameTimer = 0;
@@ -633,13 +697,14 @@ class Fighter {
     }
   }
 
+  // Verificar colisão
   checkCollision(opponent) {
     const hitbox = this.getDynamicHitbox();
     const opponentHurtbox = opponent.getDynamicHurtbox();
 
     if (!hitbox || !opponentHurtbox) return false;
 
-    // AABB collision detection
+    // Deteção de colisão AABB - https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
     return (
       hitbox.x < opponentHurtbox.x + opponentHurtbox.width &&
       hitbox.x + hitbox.width > opponentHurtbox.x &&
@@ -648,10 +713,11 @@ class Fighter {
     );
   }
 
+  // Verificar colisão de pushbox - https://glossary.infil.net/?t=Pushbox
   checkPushboxCollision(opponent) {
     if (!opponent) return false;
 
-    // Calculate this fighter's pushbox world position
+    // Calcular posição da pushbox deste Fighter
     const thisPushBox = {
       x: this.x + this.pushBox.x,
       y: this.y + this.pushBox.y,
@@ -659,7 +725,7 @@ class Fighter {
       height: this.pushBox.height,
     };
 
-    // Calculate opponent's pushbox world position
+    // Calcular posição da pushbox do oponente
     const opponentPushBox = {
       x: opponent.x + opponent.pushBox.x,
       y: opponent.y + opponent.pushBox.y,
@@ -667,7 +733,7 @@ class Fighter {
       height: opponent.pushBox.height,
     };
 
-    // Check for AABB collision
+    // Verificar colisão AABB
     return (
       thisPushBox.x < opponentPushBox.x + opponentPushBox.width &&
       thisPushBox.x + thisPushBox.width > opponentPushBox.x &&
@@ -676,10 +742,11 @@ class Fighter {
     );
   }
 
+  // Resolver colisão de pushbox (empurrar Fighters)
   resolvePushboxCollision(opponent) {
     if (!this.checkPushboxCollision(opponent)) return;
 
-    // Calculate overlap
+    // Calcular sobreposição
     const thisCenterX = this.x + this.width / 2;
     const opponentCenterX = opponent.x + opponent.width / 2;
     const distance = Math.abs(thisCenterX - opponentCenterX);
@@ -689,23 +756,24 @@ class Fighter {
     if (overlap > 0) {
       const pushDistance = overlap / 2;
 
-      // Determine push direction
+      // Determinar direção do empurrão
       if (thisCenterX < opponentCenterX) {
-        // This fighter is to the left, push both away from each other
+        // Este Fighter está à esquerda, empurrar ambos para longe um do outro
         this.x -= pushDistance;
         opponent.x += pushDistance;
       } else {
-        // This fighter is to the right, push both away from each other
+        // Este Fighter está à direita, empurrar ambos para longe um do outro
         this.x += pushDistance;
         opponent.x -= pushDistance;
       }
 
-      // Make sure fighters don't go off screen
+      // Garantir que os Fighteres não saem do ecrã
       this.constrainToScreen();
       opponent.constrainToScreen();
     }
   }
 
+  // Manter Fighter dentro dos limites do ecrã
   constrainToScreen() {
     const canvas = document.querySelector("canvas");
     if (!canvas) return;
@@ -721,8 +789,10 @@ class Fighter {
     }
   }
 
+  // Reiniciar Fighter para o estado inicial
   reset() {
     this.health = this.maxHealth;
+    this.currentHealth = this.health;
     this.x = this.startX;
     this.y = this.groundY;
     this.isAttacking = false;
@@ -733,6 +803,7 @@ class Fighter {
     this.setAnimation("stance");
   }
 
+  // Atualizar orientação para sempre olhar para o oponente
   updateFacing(opponent) {
     const shouldFaceRight = opponent.x > this.x;
     const newDirection = shouldFaceRight
