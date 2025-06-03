@@ -57,7 +57,7 @@ class Enemy extends Fighter {
     // Simulate AI inputs
     const aiKeys = this.getAIInputs(opponent);
     const aiJustPressed = this.getAIActions(opponent);
-
+    this.constrainToScreen();
     // Call parent update with AI inputs
     super.update(aiKeys, aiJustPressed, opponent);
 
@@ -67,6 +67,22 @@ class Enemy extends Fighter {
 
   setPlayer(player) {
     this.player = player;
+  }
+
+  constrainToScreen() {
+    if (!canvas) return;
+
+    // Esquerda
+    if (this.x < 0) {
+      this.x = 0;
+      if (this.velocity) this.velocity.x = 0;
+    }
+
+    // Direita
+    if (this.x + this.width > canvas.width) {
+      this.x = canvas.width - this.width;
+      if (this.velocity) this.velocity.x = 0;
+    }
   }
 
   updateAIState(distanceToPlayer) {

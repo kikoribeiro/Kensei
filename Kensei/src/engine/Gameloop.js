@@ -22,6 +22,10 @@ let roundOver = false;
 let gameEnded = false; // Nova variável para controlar se o jogo terminou
 let winner = null; // Armazenar o vencedor
 
+let ambientAudio = null;
+let attackAudio = null;
+let victoryAudio = null;
+
 // Controlo de FPS para manter 60 FPS constantemente
 const FPS = 60;
 const frameTime = 1000 / FPS;
@@ -113,6 +117,12 @@ function endGame() {
 
   gameEnded = true;
 
+  // PARAR MÚSICA DE AMBIENTE
+  if (ambientAudio) {
+    ambientAudio.pause();
+    ambientAudio.currentTime = 0;
+  }
+
   // Determinar vencedor
   if (player.isDead && !player2.isDead) {
     winner = "ENEMY";
@@ -133,7 +143,7 @@ function endGame() {
       player.setAnimation("victory");
       player2.setAnimation("dead");
     } else if (player2.health > player.health) {
-      winner = "RYU";
+      winner = "ENEMY";
       player2.setAnimation("victory");
       player.setAnimation("dead");
     } else {
@@ -142,6 +152,14 @@ function endGame() {
       player.setAnimation("stance");
       player2.setAnimation("stance");
     }
+  }
+
+  // TOCAR SOM DE VITÓRIA
+  if (victoryAudio && winner !== "EMPATE") {
+    victoryAudio.currentTime = 0;
+    victoryAudio.play().catch((e) => {
+      console.warn("Não foi possível tocar o som de vitória:", e);
+    });
   }
 
   console.log(`Vencedor: ${winner}`);
@@ -254,7 +272,23 @@ function handleRestart(e) {
       statusBar.resetTimer();
     }
 
-    console.log("Jogo reiniciado!");
+    // PARAR SOM DE VITÓRIA E REINICIAR MÚSICA DE AMBIENTE
+    if (victoryAudio) {
+      victoryAudio.pause();
+      victoryAudio.currentTime = 0;
+    }
+
+    if (ambientAudio) {
+      ambientAudio.currentTime = 0;
+      ambientAudio.play().catch((e) => {
+        console.warn("Não foi possível tocar o áudio:", e);
+      });
+    }
+
+    // REINICIAR SOM DE ATAQUE
+    if (attackAudio) {
+      attackAudio.currentTime = 0;
+    }
   }
 }
 
@@ -263,6 +297,35 @@ export function startGame() {
   // Forçar a inicialização do canvas
   if (typeof initCanvas === "function") {
     initCanvas();
+  }
+
+  // CARREGAR E TOCAR ÁUDIO DE AMBIENTE
+  if (!ambientAudio) {
+    ambientAudio = new Audio("./assets/audios/ambiente.wav");
+    ambientAudio.loop = true; // Repetir infinitamente
+    ambientAudio.volume = 0.3; // Volume baixo para não incomodar (0.0 a 1.0)
+
+    // Tocar quando estiver carregado
+    ambientAudio.addEventListener("canplaythrough", () => {
+      ambientAudio.play().catch((e) => {});
+    });
+  } else {
+    // Se já existe, apenas tocar
+    ambientAudio.currentTime = 0; // Recomeçar do início
+    ambientAudio.play().catch((e) => {});
+  }
+
+  // CARREGAR SOM DE ATAQUE E TORNAR GLOBAL
+  if (!attackAudio) {
+    attackAudio = new Audio("./assets/audios/2AH.wav");
+    attackAudio.volume = 0.5;
+    window.attackAudio = attackAudio; // TORNAR GLOBAL
+  }
+
+  // CARREGAR SOM DE VITÓRIA
+  if (!victoryAudio) {
+    victoryAudio = new Audio("./assets/audios/A0H.wav");
+    victoryAudio.volume = 0.7;
   }
 
   // Variáveis para puder conseguir criar os jogadores dinamicamente
@@ -321,16 +384,13 @@ window.addEventListener("resize", () => {
 document.addEventListener("DOMContentLoaded", () => {
   const startScreen = document.getElementById("start-screen");
 
-  // Listen for spacebar to start the game
   document.addEventListener("keydown", function onStartKey(e) {
     if (e.code === "Space") {
       e.preventDefault();
       document.removeEventListener("keydown", onStartKey);
 
-      // Hide start screen
       if (startScreen) startScreen.style.display = "none";
 
-      // Start game
       startGame();
     }
   });

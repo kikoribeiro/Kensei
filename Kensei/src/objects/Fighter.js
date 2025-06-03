@@ -677,6 +677,12 @@ class Fighter {
     const config = this.hitboxConfigs[attackType] || this.hitboxConfigs.punch;
     this.attackBox = { ...config };
 
+    // TOCAR SOM DE ATAQUE
+    if (window.attackAudio) {
+      window.attackAudio.currentTime = 0; // Reset para poder tocar múltiplas vezes rapidamente
+      window.attackAudio.play().catch((e) => {});
+    }
+
     // IMPORTANTE: Resetar timer para resposta imediata
     this.frameTimer = 0;
     this.frameIndex = 0;

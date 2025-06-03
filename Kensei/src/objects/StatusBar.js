@@ -2,16 +2,16 @@ import { ctx, canvas } from "../engine/Canvas.js";
 
 class StatusBar {
   constructor() {
-    // Simple health bar properties
+    // Propriedades da barra de vida
     this.maxHealth = 100;
     this.player1Health = 100;
     this.player2Health = 100;
 
-    // Timer properties
+    // Propriedades do cronómetro
     this.timer = 99;
     this.frameCounter = 0;
 
-    // JSON assets
+    // Recursos JSON
     this.hudData = null;
     this.hudImage = null;
     this.hudLoaded = false;
@@ -27,20 +27,18 @@ class StatusBar {
       this.hudImage = new Image();
       this.hudImage.onload = () => {
         this.hudLoaded = true;
-        console.log("HUD loaded successfully");
       };
       this.hudImage.src = "./assets/images/hud.png";
     } catch (error) {
-      console.error("Failed to load HUD:", error);
       this.hudLoaded = false;
     }
   }
 
   draw() {
-    // Player 1 health bar (left side) - BIGGER
+    // Barra de vida do Jogador 1 (lado esquerdo) - MAIOR
     this.drawHealthBar(50, 80, this.player1Health, "#ff3300", "RYU");
 
-    // Player 2 health bar (right side) - BIGGER
+    // Barra de vida do Jogador 2 (lado direito) - MAIOR
     this.drawHealthBar(
       canvas.width - 450,
       80,
@@ -49,10 +47,10 @@ class StatusBar {
       "ENEMY"
     );
 
-    // Draw timer in the center
+    // Desenhar cronómetro no centro
     this.drawTimer();
 
-    // DEBUG: Show health values (moved down)
+    // DEPURAÇÃO: Mostrar valores de vida (movido para baixo)
     ctx.fillStyle = "#ffff00";
     ctx.font = "12px Arial";
     ctx.textAlign = "left";
@@ -61,11 +59,11 @@ class StatusBar {
   }
 
   drawHealthBar(x, y, health, color, playerName) {
-    const width = 400; // BIGGER width (was 300)
-    const height = 35; // BIGGER height (was 20)
-    const borderWidth = 4; // Thicker border
+    const width = 400; // Largura MAIOR (era 300)
+    const height = 35; // Altura MAIOR (era 20)
+    const borderWidth = 4; // Margem mais grossa
 
-    // ARCADE STYLE BACKGROUND with gradient
+    // FUNDO ESTILO ARCADE com gradiente
     const gradient = ctx.createLinearGradient(x, y, x, y + height);
     gradient.addColorStop(0, "#222222");
     gradient.addColorStop(1, "#111111");
@@ -73,20 +71,20 @@ class StatusBar {
     ctx.fillStyle = gradient;
     ctx.fillRect(x, y, width, height);
 
-    // HEALTH FILL with arcade gradient
+    // PREENCHIMENTO DA VIDA com gradiente arcade
     const healthWidth = (health / this.maxHealth) * width;
     const healthGradient = ctx.createLinearGradient(x, y, x, y + height);
 
     if (health > 60) {
-      // Green gradient for high health
+      // Gradiente verde para vida alta
       healthGradient.addColorStop(0, "#44ff44");
       healthGradient.addColorStop(1, "#22cc22");
     } else if (health > 30) {
-      // Yellow gradient for medium health
+      // Gradiente amarelo para vida média
       healthGradient.addColorStop(0, "#ffff44");
       healthGradient.addColorStop(1, "#cccc22");
     } else {
-      // Red gradient for low health
+      // Gradiente vermelho para vida baixa
       healthGradient.addColorStop(0, "#ff4444");
       healthGradient.addColorStop(1, "#cc2222");
     }
@@ -94,14 +92,14 @@ class StatusBar {
     ctx.fillStyle = healthGradient;
     ctx.fillRect(x, y, healthWidth, height);
 
-    // ARCADE SHINE EFFECT on top
+    // EFEITO DE BRILHO ARCADE no topo
     const shineGradient = ctx.createLinearGradient(x, y, x, y + height / 3);
     shineGradient.addColorStop(0, "rgba(255,255,255,0.4)");
     shineGradient.addColorStop(1, "rgba(255,255,255,0.0)");
     ctx.fillStyle = shineGradient;
     ctx.fillRect(x, y, healthWidth, height / 3);
 
-    // THICK ARCADE BORDER
+    // MARGEM ARCADE GROSSA
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = borderWidth;
     ctx.strokeRect(
@@ -111,14 +109,14 @@ class StatusBar {
       height + borderWidth
     );
 
-    // INNER BORDER for depth
+    // MARGEM INTERIOR para profundidade
     ctx.strokeStyle = "#666666";
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 2, y + 2, width - 4, height - 4);
 
-    // PLAYER NAME ABOVE HEALTH BAR - ARCADE STYLE
+    // NOME DO JOGADOR ACIMA DA BARRA DE VIDA - ESTILO ARCADE
     ctx.save();
-    ctx.font = "bold 20px Arial"; // Bigger font
+    ctx.font = "bold 20px Arial"; // Fonte maior
     ctx.fillStyle = "#ffffff";
     ctx.shadowColor = "#000000";
     ctx.shadowBlur = 3;
@@ -134,21 +132,21 @@ class StatusBar {
     }
     ctx.restore();
 
-    // HEALTH PERCENTAGE TEXT
+    // TEXTO DA PERCENTAGEM DE VIDA
     ctx.save();
   }
 
   drawTimer() {
     const timerX = canvas.width / 2;
-    const timerY = 50; // Moved up since health bars are lower
+    const timerY = 50; // Movido para cima já que as barras de vida estão mais baixo
 
     if (this.hudLoaded && this.hudData && this.hudImage) {
-      // Use JSON sprites for numbers (with scaling)
-      this.drawNumberSprites(this.timer, timerX, timerY, 3); // Even BIGGER scale
+      // Usar sprites JSON para números (com escala)
+      this.drawNumberSprites(this.timer, timerX, timerY, 3); // Escala ainda MAIOR
     } else {
-      // Fallback to regular text (bigger font)
+      // Recurso a texto normal (fonte maior)
       ctx.save();
-      ctx.font = "bold 72px Arial"; // BIGGER font
+      ctx.font = "bold 72px Arial"; // Fonte MAIOR
       ctx.fillStyle = "#ffffff";
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 3;
@@ -158,7 +156,7 @@ class StatusBar {
       ctx.shadowOffsetY = 3;
       ctx.textAlign = "center";
 
-      // Stroke first, then fill for arcade look
+      // Contorno primeiro, depois preenchimento para aspeto arcade
       ctx.strokeText(this.timer.toString().padStart(2, "0"), timerX, timerY);
       ctx.fillText(this.timer.toString().padStart(2, "0"), timerX, timerY);
       ctx.restore();
@@ -166,7 +164,7 @@ class StatusBar {
   }
 
   drawNumberSprites(number, x, y, scale = 3) {
-    // BIGGER default scale
+    // Escala padrão MAIOR
     const numberStr = number.toString().padStart(2, "0");
     const frames = this.hudData.frames;
 
@@ -176,7 +174,7 @@ class StatusBar {
       const frameKey = `${digit}.png`;
       if (frames[frameKey]) {
         totalWidth += frames[frameKey].frame.w * scale;
-        if (i < numberStr.length - 1) totalWidth += 10 * scale; // BIGGER spacing
+        if (i < numberStr.length - 1) totalWidth += 10 * scale; // Espaçamento MAIOR
       }
     }
 
@@ -197,22 +195,22 @@ class StatusBar {
           frame.h,
           currentX,
           y,
-          frame.w * scale, // Scale the width
-          frame.h * scale // Scale the height
+          frame.w * scale, // Escalar a largura
+          frame.h * scale // Escalar a altura
         );
 
-        currentX += frame.w * scale + 10 * scale; // BIGGER spacing
+        currentX += frame.w * scale + 10 * scale; // Espaçamento MAIOR
       }
     }
   }
 
-  // FIX: Update this method to properly set health values
+  // CORRIGIR: Actualizar este método para definir correctamente os valores de vida
   updateHealth(player1Health, player2Health) {
     this.player1Health = Math.max(0, Math.min(100, player1Health));
     this.player2Health = Math.max(0, Math.min(100, player2Health));
   }
 
-  // ADD: Method to update health from fighter objects directly
+  // ADICIONAR: Método para actualizar vida diretamente dos objectos fighter
   updateFromFighters(fighter1, fighter2) {
     if (fighter1) {
       this.player1Health = Math.max(
