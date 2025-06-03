@@ -1,5 +1,6 @@
 import Fighter from "./Fighter.js";
 import { FighterDirection } from "../constants/fighter.js";
+import { canvas } from "../engine/Canvas.js";
 
 /**
  * Classe Enemy que estende Fighter para criar inimigos com IA.

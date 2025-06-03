@@ -7,7 +7,7 @@ class StatusBar {
     this.player1Health = 100;
     this.player2Health = 100;
 
-    // Propriedades do cronómetro
+    // Propriedades do timer
     this.timer = 99;
     this.frameCounter = 0;
 
@@ -49,21 +49,14 @@ class StatusBar {
 
     // Desenhar cronómetro no centro
     this.drawTimer();
-
-    // DEPURAÇÃO: Mostrar valores de vida (movido para baixo)
-    ctx.fillStyle = "#ffff00";
-    ctx.font = "12px Arial";
-    ctx.textAlign = "left";
-    ctx.fillText(`P1: ${this.player1Health}`, 10, 150);
-    ctx.fillText(`P2: ${this.player2Health}`, 10, 165);
   }
 
   drawHealthBar(x, y, health, color, playerName) {
-    const width = 400; // Largura MAIOR (era 300)
-    const height = 35; // Altura MAIOR (era 20)
+    const width = 400; // Largura MAIOR
+    const height = 35; // Altura MAIOR
     const borderWidth = 4; // Margem mais grossa
 
-    // FUNDO ESTILO ARCADE com gradiente
+    // FUNDO ESTILO ARCADE
     const gradient = ctx.createLinearGradient(x, y, x, y + height);
     gradient.addColorStop(0, "#222222");
     gradient.addColorStop(1, "#111111");
@@ -71,7 +64,7 @@ class StatusBar {
     ctx.fillStyle = gradient;
     ctx.fillRect(x, y, width, height);
 
-    // PREENCHIMENTO DA VIDA com gradiente arcade
+    // PREENCHIMENTO DA VIDA
     const healthWidth = (health / this.maxHealth) * width;
     const healthGradient = ctx.createLinearGradient(x, y, x, y + height);
 
@@ -92,7 +85,7 @@ class StatusBar {
     ctx.fillStyle = healthGradient;
     ctx.fillRect(x, y, healthWidth, height);
 
-    // EFEITO DE BRILHO ARCADE no topo
+    // EFEITO DE BRILHO
     const shineGradient = ctx.createLinearGradient(x, y, x, y + height / 3);
     shineGradient.addColorStop(0, "rgba(255,255,255,0.4)");
     shineGradient.addColorStop(1, "rgba(255,255,255,0.0)");
@@ -138,43 +131,26 @@ class StatusBar {
 
   drawTimer() {
     const timerX = canvas.width / 2;
-    const timerY = 50; // Movido para cima já que as barras de vida estão mais baixo
+    const timerY = 50;
 
     if (this.hudLoaded && this.hudData && this.hudImage) {
       // Usar sprites JSON para números (com escala)
-      this.drawNumberSprites(this.timer, timerX, timerY, 3); // Escala ainda MAIOR
-    } else {
-      // Recurso a texto normal (fonte maior)
-      ctx.save();
-      ctx.font = "bold 72px Arial"; // Fonte MAIOR
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 3;
-      ctx.shadowColor = "#000000";
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetX = 3;
-      ctx.shadowOffsetY = 3;
-      ctx.textAlign = "center";
-
-      // Contorno primeiro, depois preenchimento para aspeto arcade
-      ctx.strokeText(this.timer.toString().padStart(2, "0"), timerX, timerY);
-      ctx.fillText(this.timer.toString().padStart(2, "0"), timerX, timerY);
-      ctx.restore();
+      this.drawNumberSprites(this.timer, timerX, timerY, 3);
     }
   }
 
   drawNumberSprites(number, x, y, scale = 3) {
-    // Escala padrão MAIOR
     const numberStr = number.toString().padStart(2, "0");
     const frames = this.hudData.frames;
-
+    // Calcular a largura total necessária para desenhar todos os dígitos
     let totalWidth = 0;
+    // Ciclo for para calcular os dígitos e corre-los
     for (let i = 0; i < numberStr.length; i++) {
       const digit = numberStr[i];
       const frameKey = `${digit}.png`;
       if (frames[frameKey]) {
         totalWidth += frames[frameKey].frame.w * scale;
-        if (i < numberStr.length - 1) totalWidth += 10 * scale; // Espaçamento MAIOR
+        if (i < numberStr.length - 1) totalWidth += 10 * scale;
       }
     }
 
@@ -195,22 +171,22 @@ class StatusBar {
           frame.h,
           currentX,
           y,
-          frame.w * scale, // Escalar a largura
-          frame.h * scale // Escalar a altura
+          frame.w * scale,
+          frame.h * scale
         );
 
-        currentX += frame.w * scale + 10 * scale; // Espaçamento MAIOR
+        currentX += frame.w * scale + 10 * scale;
       }
     }
   }
 
-  // CORRIGIR: Actualizar este método para definir correctamente os valores de vida
+  //update na barra de vida
   updateHealth(player1Health, player2Health) {
     this.player1Health = Math.max(0, Math.min(100, player1Health));
     this.player2Health = Math.max(0, Math.min(100, player2Health));
   }
 
-  // ADICIONAR: Método para actualizar vida diretamente dos objectos fighter
+  // Método para atualizar a barra de vida diretamente dos objectos fighter
   updateFromFighters(fighter1, fighter2) {
     if (fighter1) {
       this.player1Health = Math.max(

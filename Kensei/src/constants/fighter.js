@@ -39,10 +39,3 @@ export const AIState = {
   DEFENSIVE: "defensive",
   ATTACKING: "attacking",
 };
-
-export const FighterStats = {
-  DEFAULT_HEALTH: 100,
-  DEFAULT_SPEED: 5,
-  DEFAULT_JUMP_SPEED: -18,
-  DEFAULT_GRAVITY: 0.6,
-};

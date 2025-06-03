@@ -319,19 +319,6 @@ class Fighter {
 
   // Desenhar o Fighter no canvas
   draw(ctx) {
-    // Durante a fase de carregamento, desenhar um placeholder
-    if (
-      !this.animationsReady ||
-      !this.sprite ||
-      !this.sprite.complete ||
-      !this.animations ||
-      Object.keys(this.animations).length === 0
-    ) {
-      ctx.fillStyle = this.color || "red";
-      ctx.fillRect(this.x, this.y, this.width, this.height);
-      return;
-    }
-
     // Obter frames da animação atual
     const frames = this.animations[this.currentAnimation];
     if (!frames?.length) return;
@@ -395,59 +382,59 @@ class Fighter {
         this.frameIndex = (this.frameIndex + 1) % frames.length;
       }
     }
-    //NO FINAL RETIRAWFEBNIJFWEBIJWEI
-    // if (window.DEBUG_MODE) {
-    //   this.drawHitboxes(ctx);
-    // }
+    // NO FINAL RETIRAWFEBNIJFWEBIJWEI
+    if (window.DEBUG_MODE) {
+      this.drawHitboxes(ctx);
+    }
   }
 
-  // // Desenhar hitboxes para debug
-  // drawHitboxes(ctx) {
-  //   // Desenhar hurtbox do personagem (onde podem ser atingidos)
-  //   const hurtbox = this.getDynamicHurtbox();
-  //   ctx.strokeStyle = "blue";
-  //   ctx.lineWidth = 2;
-  //   ctx.strokeRect(hurtbox.x, hurtbox.y, hurtbox.width, hurtbox.height);
+  // Desenhar hitboxes para debug
+  drawHitboxes(ctx) {
+    // Desenhar hurtbox do personagem (onde podem ser atingidos)
+    const hurtbox = this.getDynamicHurtbox();
+    ctx.strokeStyle = "blue";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(hurtbox.x, hurtbox.y, hurtbox.width, hurtbox.height);
 
-  //   // Etiqueta da hurtbox
-  //   ctx.fillStyle = "blue";
-  //   ctx.font = "10px Arial";
-  //   ctx.fillText("DANO", hurtbox.x, hurtbox.y - 5);
+    // Etiqueta da hurtbox
+    ctx.fillStyle = "blue";
+    ctx.font = "10px Arial";
+    ctx.fillText("DANO", hurtbox.x, hurtbox.y - 5);
 
-  //   // Desenhar hitbox de ataque se estiver a atacar
-  //   const hitbox = this.getDynamicHitbox();
-  //   if (hitbox) {
-  //     ctx.strokeStyle = "red";
-  //     ctx.lineWidth = 3;
-  //     ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
+    // Desenhar hitbox de ataque se estiver a atacar
+    const hitbox = this.getDynamicHitbox();
+    if (hitbox) {
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
 
-  //     // Etiqueta da hitbox
-  //     ctx.fillStyle = "red";
-  //     ctx.font = "10px Arial";
-  //     ctx.fillText(
-  //       `ATAQUE-${this.attackType.toUpperCase()}`,
-  //       hitbox.x,
-  //       hitbox.y - 5
-  //     );
-  //   }
+      // Etiqueta da hitbox
+      ctx.fillStyle = "red";
+      ctx.font = "10px Arial";
+      ctx.fillText(
+        `ATAQUE-${this.attackType.toUpperCase()}`,
+        hitbox.x,
+        hitbox.y - 5
+      );
+    }
 
-  //   // Desenhar pushbox
-  //   const pushbox = {
-  //     x: this.x + this.pushBox.x,
-  //     y: this.y + this.pushBox.y,
-  //     width: this.pushBox.width,
-  //     height: this.pushBox.height,
-  //   };
+    // Desenhar pushbox
+    const pushbox = {
+      x: this.x + this.pushBox.x,
+      y: this.y + this.pushBox.y,
+      width: this.pushBox.width,
+      height: this.pushBox.height,
+    };
 
-  //   ctx.strokeStyle = "green";
-  //   ctx.lineWidth = 2;
-  //   ctx.strokeRect(pushbox.x, pushbox.y, pushbox.width, pushbox.height);
+    ctx.strokeStyle = "green";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(pushbox.x, pushbox.y, pushbox.width, pushbox.height);
 
-  //   // Etiqueta da pushbox
-  //   ctx.fillStyle = "green";
-  //   ctx.font = "10px Arial";
-  //   ctx.fillText("EMPURRAR", pushbox.x, pushbox.y - 5);
-  // }
+    // Etiqueta da pushbox
+    ctx.fillStyle = "green";
+    ctx.font = "10px Arial";
+    ctx.fillText("EMPURRAR", pushbox.x, pushbox.y - 5);
+  }
 
   // Hurtbox dinâmica baseada no estado atual
   getDynamicHurtbox() {
@@ -710,7 +697,7 @@ class Fighter {
 
     if (!hitbox || !opponentHurtbox) return false;
 
-    // Deteção de colisão AABB - https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
+    // Deteção de colisão AABB - 
     return (
       hitbox.x < opponentHurtbox.x + opponentHurtbox.width &&
       hitbox.x + hitbox.width > opponentHurtbox.x &&
@@ -719,7 +706,7 @@ class Fighter {
     );
   }
 
-  // Verificar colisão de pushbox - https://glossary.infil.net/?t=Pushbox
+  // Verificar colisão de pushbox - 
   checkPushboxCollision(opponent) {
     if (!opponent) return false;
 
